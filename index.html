@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="it">
 <head>
@@ -391,6 +392,7 @@ function setAuthenticated(user){
   loginOverlay.classList.add("hidden");
   setBadge("☁️ Sincronizzato");
   if(user) localStorage.setItem("bs_cloud_email",user.email||"");
+  if(window.loadCloudPlayers) window.loadCloudPlayers();
 }
 
 async function checkSession(){
@@ -442,6 +444,43 @@ checkSession();
 </script>
 <script type="module">
 const supabase=window.burracoSupabase;
+
+window.loadCloudPlayers=async function loadCloudPlayers(){
+  try{
+    const groupId=await getCloudGroupId();
+    const {data:links,error:linksError}=await supabase
+      .from("group_players")
+      .select("player_id")
+      .eq("group_id",groupId);
+    if(linksError) throw linksError;
+
+    const ids=(links||[]).map(x=>x.player_id);
+    if(!ids.length) return;
+
+    const {data:cloudPlayers,error:playersError}=await supabase
+      .from("players")
+      .select("id,name")
+      .in("id",ids)
+      .order("name");
+    if(playersError) throw playersError;
+
+    const names=(cloudPlayers||[]).map(p=>p.name);
+    let changed=false;
+    names.forEach(name=>{
+      if(!players.some(p=>p.toLowerCase()===name.toLowerCase())){
+        players.push(name);
+        changed=true;
+      }
+    });
+    if(changed){
+      save();
+      renderPlayers();
+      renderSetup();
+    }
+  }catch(err){
+    console.error("Burraco Score cloud players load error",err);
+  }
+}
 
 async function getCloudGroupId(){
   const {data:{user},error:userError}=await supabase.auth.getUser();
