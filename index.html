@@ -362,10 +362,100 @@ function showHistory(i){
   d.classList.remove("hidden");
 }
 
-function renderStats(){
- const games=matches.length,wins={};players.forEach(p=>wins[p]={w:0,g:0});matches.forEach(g=>{g.players.forEach((t,i)=>t.forEach(p=>{wins[p].g++;if(g.winner===i)wins[p].w++}))});
- const top=Object.entries(wins).sort((a,b)=>(b[1].w/Math.max(1,b[1].g))-(a[1].w/Math.max(1,a[1].g))).slice(0,5);
- document.getElementById("generalStats").innerHTML='<div class="detailgrid"><div class="stat"><strong>'+games+'</strong><span>PARTITE CONCLUSE</span></div><div class="stat"><strong>'+players.length+'</strong><span>GIOCATORI</span></div></div><div class="section-title">🏆 Classifica</div>'+top.map((x,i)=>'<div class="row" style="padding:8px 0;border-bottom:1px solid #edf0f3"><strong>'+(i+1)+'. '+esc(x[0])+'</strong><span>'+((x[1].w/x[1].g*100)||0).toFixed(1)+'%</span></div>').join("");
+async function renderStats(){
+  const el=document.getElementById("generalStats");
+  el.innerHTML='<div class="muted">☁️ Caricamento statistiche...</div>';
+
+  try{
+    if(!window.burracoSupabase) throw new Error("Cloud non disponibile.");
+
+    const {data:{user},error:uerr}=await window.burracoSupabase.auth.getUser();
+    if(uerr||!user) throw uerr||new Error("Utente non autenticato.");
+
+    const {data:members,error:merr}=await window.burracoSupabase
+      .from("group_members")
+      .select("group_id")
+      .eq("user_id",user.id)
+      .limit(1);
+    if(merr) throw merr;
+    if(!members?.length) throw new Error("Nessun gruppo associato.");
+
+    const groupId=members[0].group_id;
+
+    const {data:games,error:gerr}=await window.burracoSupabase
+      .from("games")
+      .select("id,winner_team,final_score_1,final_score_2,status")
+      .eq("group_id",groupId)
+      .eq("status","finished");
+    if(gerr) throw gerr;
+
+    const gameIds=(games||[]).map(g=>g.id);
+
+    const {data:gp,error:gperr}=await window.burracoSupabase
+      .from("game_players")
+      .select("game_id,player_id,team")
+      .in("game_id",gameIds);
+    if(gperr) throw gperr;
+
+    const playerIds=[...new Set((gp||[]).map(x=>x.player_id))];
+    let plist=[];
+    if(playerIds.length){
+      const {data:ps,error:perr}=await window.burracoSupabase
+        .from("players")
+        .select("id,name")
+        .in("id",playerIds);
+      if(perr) throw perr;
+      plist=ps||[];
+    }
+
+    const names={};
+    plist.forEach(p=>names[p.id]=p.name);
+
+    const stats={};
+    plist.forEach(p=>stats[p.name]={games:0,wins:0,points:0});
+
+    (gp||[]).forEach(row=>{
+      const game=(games||[]).find(g=>g.id===row.game_id);
+      const name=names[row.player_id];
+      if(!game||!name)return;
+
+      stats[name]??={games:0,wins:0,points:0};
+      stats[name].games++;
+
+      const team=Number(row.team||1);
+      stats[name].points+=Number(team===1?game.final_score_1:game.final_score_2)||0;
+      if(Number(game.winner_team)===team)stats[name].wins++;
+    });
+
+    const ranking=Object.entries(stats).sort((a,b)=>{
+      const aw=a[1].games?a[1].wins/a[1].games:0;
+      const bw=b[1].games?b[1].wins/b[1].games:0;
+      return bw-aw;
+    });
+
+    el.innerHTML=
+      '<div class="detailgrid">'+
+      '<div class="stat"><strong>'+games.length+'</strong><span>PARTITE CONCLUSE</span></div>'+
+      '<div class="stat"><strong>'+plist.length+'</strong><span>GIOCATORI</span></div>'+
+      '</div>'+
+      '<div class="section-title">🏆 Classifica cloud</div>'+
+      (ranking.length?
+        ranking.map((x,i)=>{
+          const g=x[1].games,w=x[1].wins;
+          const wr=g?(w/g*100).toFixed(1):"0.0";
+          const avg=g?Math.round(x[1].points/g):0;
+          return '<div class="card" style="margin:6px 0">'+
+            '<div class="row"><strong>'+(i+1)+'. '+esc(x[0])+'</strong>'+
+            '<span class="pill">'+wr+'%</span></div>'+
+            '<div class="muted" style="margin-top:5px">'+g+' partite · '+w+' vinte · '+avg+' punti medi</div>'+
+            '</div>';
+        }).join("")
+        :
+        '<div class="muted">Nessuna statistica disponibile.</div>');
+  }catch(err){
+    console.error("Cloud stats error",err);
+    el.innerHTML='<div class="muted">⚠️ Impossibile caricare le statistiche cloud.</div>';
+  }
 }
 renderSetup();renderPlayers();renderHistory();renderStats();
 </script>
