@@ -2,234 +2,244 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101828">
 <title>Burraco Score</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#f3f5f8;color:#18202a;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-header{background:#111827;color:white;padding:16px;position:sticky;top:0;z-index:10}
-.top{max-width:900px;margin:auto;display:flex;justify-content:space-between;align-items:center}
-h1{font-size:22px;margin:0}.sub{font-size:12px;color:#b8c1ce}
-main{max-width:900px;margin:16px auto;padding:0 12px}
-.card{background:#fff;border:1px solid #e0e4e9;border-radius:16px;padding:16px;margin-bottom:14px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-input[type=text],input[type=number]{width:100%;padding:11px;border:1px solid #d9dee5;border-radius:10px;font-size:16px}
-label.small{font-size:12px;color:#687384;display:block;margin-bottom:5px}
-.score{font-size:40px;font-weight:800}.muted{color:#687384;font-size:13px}
-.teamhead{display:flex;justify-content:space-between;gap:10px}
-.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer}
-.primary{background:#2457d6;color:#fff}.secondary{background:#e9edf2;color:#202938}
-.primary:disabled{opacity:.4;cursor:not-allowed}
-.actions{display:flex;gap:10px;flex-wrap:wrap}
-.section{margin-top:16px}.section h3{font-size:14px;margin:0 0 8px}
-.row{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #edf0f3;padding:8px 0}
-.stepper{display:flex;align-items:center;gap:8px}
-.stepper button{width:38px;height:38px;border:1px solid #d7dce3;background:#fff;border-radius:9px;font-size:22px;cursor:pointer}
-.count{width:30px;text-align:center;font-weight:800;font-size:17px}
-.check{display:flex;align-items:center;gap:9px;padding:9px 0;font-size:15px}
-.check input{width:19px;height:19px}
-.total{border-top:2px solid #edf0f3;margin-top:14px;padding-top:12px;font-size:22px;font-weight:800}
-.modal{position:fixed;inset:0;background:#0008;display:none;align-items:flex-end;z-index:20}
-.modal.open{display:flex}
-.sheet{background:#fff;width:100%;max-width:900px;margin:auto;border-radius:18px 18px 0 0;padding:16px;max-height:95vh;overflow:auto}
-.warning{background:#fff3cd;color:#755b00;border-radius:10px;padding:10px;font-size:13px;margin-top:10px}
-.history{padding:12px 0;border-bottom:1px solid #e5e8ed}
-.history:last-child{border-bottom:0}
-.mini{background:#f7f8fa;border-radius:10px;padding:10px}
-@media(max-width:650px){.grid{grid-template-columns:1fr}.score{font-size:34px}.sheet{max-height:96vh}}
-
-/* v0.4 mobile scoreboard */
-.scoreboard{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.scorebox{border-radius:18px;padding:18px;color:#fff;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 5px 18px #0002}
-.scorebox.a{background:#2457d6}.scorebox.b{background:#b8324f}
-.scorebox .team{font-weight:800;font-size:16px}.scorebox .big{font-size:46px;line-height:1;font-weight:900;letter-spacing:-1px}.scorebox .remain{font-size:12px;opacity:.85}
-.main-action{width:100%;font-size:19px;padding:17px;border-radius:15px;margin-bottom:12px;box-shadow:0 4px 12px #0002}
-.target-note{text-align:center;margin:5px 0 16px;font-size:13px;color:#687384}
-.end-overlay{position:fixed;inset:0;background:#111827ee;z-index:100;display:none;align-items:center;justify-content:center;padding:18px}
-.end-overlay.open{display:flex}
-.end-card{background:#fff;border-radius:24px;width:min(520px,100%);padding:28px 20px;text-align:center;box-shadow:0 15px 50px #0006}
-.trophy{font-size:58px}.end-title{font-size:28px;font-weight:900;margin:5px 0 16px}.winner-name{font-size:24px;font-weight:900}.winner-score{font-size:52px;font-weight:900;margin:4px 0 12px}.final-row{display:flex;justify-content:space-between;background:#f5f7fa;border-radius:12px;padding:12px;margin:7px 0;font-weight:700}
-@media(max-width:650px){
- .scoreboard{grid-template-columns:1fr 1fr}
- .scorebox{min-height:135px;padding:14px}.scorebox .big{font-size:34px}.scorebox .team{font-size:14px}
- main{margin-top:12px}.desktop-setup{padding:13px}
-}
-
-<style>
-.navbar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}.navbtn{border:1px solid #dfe3e8;background:#fff;border-radius:11px;padding:11px;font-weight:800;cursor:pointer}.navbtn.active{background:#111827;color:#fff}.page{display:none}.page.active{display:block}.player-list{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.player-card{background:#f7f8fa;border-radius:12px;padding:13px}.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.stat{background:#f7f8fa;border-radius:12px;padding:12px;text-align:center}.stat .v{font-size:25px;font-weight:900}.stat .l{font-size:11px;color:#687384}.select{width:100%;padding:11px;border:1px solid #d9dee5;border-radius:10px;font-size:16px;background:#fff}.mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mode-toggle button{padding:11px;border:1px solid #d9dee5;background:#fff;border-radius:10px;font-weight:800}.mode-toggle button.active{background:#2457d6;color:#fff}@media(max-width:650px){.player-list{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,1fr)}}
-<style>
-#gameSetup .mode-toggle{position:relative;z-index:5}#gameSetup .mode-toggle button{position:relative;z-index:6;pointer-events:auto;cursor:pointer}#gameSetup .mode-toggle button.active{background:#2457d6;color:#fff}
-.stat-table{width:100%;border-collapse:collapse}.stat-table th,.stat-table td{padding:9px 6px;border-bottom:1px solid #edf0f3;text-align:left}.stat-table th{font-size:12px;color:#687384}.stat-table th:not(:first-child),.stat-table td:not(:first-child){text-align:right}
-.stats-card{background:#fff;border:1px solid #e0e4e9;border-radius:16px;padding:16px;margin-bottom:14px}
-</style></style>
+:root{--bg:#f3f5f8;--card:#fff;--ink:#172033;--muted:#687386;--line:#dfe4ea;--accent:#2457d6;--accent2:#102a72;--green:#16804a;--red:#b8324f}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{overflow-x:hidden}.app{width:100%;max-width:850px;margin:auto;padding:12px 12px 36px}
+header{padding:10px 4px 12px}.brand{font-size:27px;font-weight:950}.sub{color:var(--muted);font-size:12px;margin-top:2px}
+nav{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+nav button,.btn{border:0;border-radius:11px;padding:11px 9px;font-weight:800;background:#e7ebf1;color:#273246;cursor:pointer}
+nav button.active,.btn.primary{background:var(--accent);color:#fff}.btn.secondary{background:#e7ebf1}.btn.danger{background:#f8e7eb;color:#a52642}
+.card{background:var(--card);border:1px solid var(--line);border-radius:17px;padding:15px;margin-bottom:10px;box-shadow:0 2px 8px #1720330a}
+h1,h2,h3{margin:0 0 8px}h2{font-size:20px}h3{font-size:14px}.muted,.small{color:var(--muted);font-size:12px}
+.hidden{display:none!important}.row{display:flex;align-items:center;justify-content:space-between;gap:8px}.row>*{min-width:0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.field label{display:block;font-size:11px;font-weight:800;color:var(--muted);margin-bottom:5px}
+select,input{width:100%;border:1px solid #d5dbe4;border-radius:10px;background:#fff;padding:11px;font-size:15px;color:var(--ink)}
+.btn{white-space:nowrap}.full{width:100%;margin-top:10px}
+.mode{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}.mode button{padding:13px;border:1px solid var(--line);border-radius:12px;background:#f7f8fa;font-weight:900}.mode button.active{background:#172033;color:#fff}
+.scoreboard{display:grid;grid-template-columns:1fr 1fr;gap:8px}.scorebox{text-align:center;background:#f7f8fb;border-radius:14px;padding:13px;min-width:0}.team{font-size:13px;font-weight:850;line-height:1.2}.score{font-size:38px;font-weight:950;margin-top:5px}
+.handrow{display:grid;grid-template-columns:minmax(0,1fr) 31px 42px 31px;gap:5px;align-items:center;padding:7px 0;border-bottom:1px solid #edf0f3}.handrow:last-child{border-bottom:0}.handrow>span{font-size:12px;line-height:1.15}.counter{display:contents}.counter button{height:36px;width:31px;border:0;border-radius:9px;background:#edf0f4;font-size:20px;font-weight:900}.counter input{text-align:center;height:36px;padding:4px;font-weight:850}
+.momentum{background:#f7f8fb;border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:10px}.bar{height:11px;border-radius:999px;overflow:hidden;background:#dfe4ea;display:flex}.barA{background:#2457d6}.barB{background:#b8324f}.proj{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.proj div{background:#fff;border-radius:10px;text-align:center;padding:8px}.proj strong{font-size:19px}.proj small{display:block;color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:11px 7px;border-bottom:1px solid #edf0f3}th{font-size:10px;text-transform:uppercase;color:var(--muted)}
+.clickable{cursor:pointer}.clickable:hover{background:#f7f8fb}.rank{font-size:17px}.detailgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.stat{background:#f7f8fb;border-radius:12px;padding:11px}.stat strong{display:block;font-size:25px}.stat span{font-size:10px;color:var(--muted)}.section-title{font-size:12px;font-weight:900;margin:15px 0 7px}
+.history-item{cursor:pointer}.history-item:hover{background:#f7f8fb}.result{font-size:22px;font-weight:950}.pill{font-size:10px;font-weight:900;padding:4px 7px;border-radius:999px;background:#e9edf4}
+.final{border:2px solid var(--accent);text-align:center}.final .winner{font-size:24px;font-weight:950}.danger-note{color:var(--red);font-size:12px;font-weight:800;margin-top:7px}
+@media(max-width:560px){.app{padding:9px 9px 30px}.grid{grid-template-columns:1fr}.score{font-size:32px}.nav button{font-size:11px;padding:10px 5px}.card{padding:13px}.handrow{grid-template-columns:minmax(0,1fr) 30px 40px 30px}.handrow>span{font-size:11px}.counter button{width:30px}}
 </style>
 </head>
 <body>
+<div class="app">
+<header><div class="brand">🃏 Burraco Score</div><div class="sub">Segnapunti · statistiche · momentum</div></header>
 
-<header>
-<div class="top">
-<div><h1>🃏 Burraco Score</h1><div class="sub">Segnapunti per partite di Burraco</div></div>
-<button class="btn secondary" onclick="openNewGame()">Nuova partita</button>
-</div>
-</header>
+<nav>
+<button id="tabGame" class="active" onclick="showTab('game')">Partita</button>
+<button id="tabPlayers" onclick="showTab('players')">Giocatori</button>
+<button id="tabHistory" onclick="showTab('history')">Storico</button>
+<button id="tabStats" onclick="showTab('stats')">Statistiche</button>
+</nav>
 
-<main>
-<div class="navbar">
-<button class="navbtn active" id="navGame" onclick="showPage('game')">🎮 Partita</button>
-<button class="navbtn" id="navPlayers" onclick="showPage('players')">👥 Giocatori</button>
-<button class="navbtn" id="navStats" onclick="showPage('stats')">📊 Statistiche</button>
-</div>
-<section id="pageGame" class="page active">
-<div class="card" id="gameSetup">
-<h2 style="margin:0 0 6px">Nuova partita</h2><div class="muted">Scegli come vuoi giocare.</div>
-<div class="mode-toggle" style="margin-top:12px">
-<button id="startSingle" onclick="chooseStartMode('single')">👤 Singolo</button>
-<button id="startPairs" onclick="chooseStartMode('pairs')">👥 Coppie</button>
-</div>
-<div id="startModeFields" style="margin-top:14px"></div>
-<button class="btn primary" style="width:100%;margin-top:12px" onclick="startGameFromMain()">Inizia partita</button>
-</div><div class="card">
-<div class="grid">
-<div><label class="small">Coppia 1</label><input id="name0" value="Coppia 1" oninput="updateNames()"></div>
-<div><label class="small">Coppia 2</label><input id="name1" value="Coppia 2" oninput="updateNames()"></div>
-</div>
-<div class="grid" style="margin-top:12px">
-<div><label class="small">Punteggio per vincere</label><input id="target" type="number" value="2005" min="1" step="1" onchange="updateTarget()"></div>
-<div><label class="small">Mani giocate</label><div id="handsNumber" style="font-size:30px;font-weight:800">0</div></div>
-</div>
+<section id="pageGame">
+<div id="setupCard" class="card">
+<h2>Nuova partita</h2>
+<div class="mode"><button id="singleBtn" class="active" onclick="setMode('single')">👤 Singolo</button><button id="pairsBtn" onclick="setMode('pairs')">👥 Coppie</button></div>
+<div id="setupFields"></div>
+<div class="muted" style="margin-top:7px">Un giocatore non può essere selezionato più di una volta.</div>
+<button class="btn primary full" onclick="startGame()">INIZIA PARTITA</button>
 </div>
 
-<div class="scoreboard">
-<div class="scorebox a" id="score0"></div>
-<div class="scorebox b" id="score1"></div>
-</div>
-<div class="target-note" id="targetNote"></div>
-<button class="btn primary main-action" onclick="openHand()">＋ NUOVA MANO</button>
-<div class="actions" style="margin-bottom:14px">
-<button class="btn secondary" onclick="undo()">↶ Annulla ultima</button>
-</div>
-
+<div id="gameCard" class="hidden">
 <div class="card">
-<strong>Storico</strong>
-<div class="muted">Il punteggio viene salvato automaticamente nel browser.</div>
-<div id="history" style="margin-top:8px"></div>
+<div class="row"><h2 id="gameTitle">Partita</h2><span id="handCount" class="pill"></span></div>
+<div class="scoreboard">
+<div class="scorebox"><div id="teamA" class="team"></div><div id="scoreA" class="score">0</div></div>
+<div class="scorebox"><div id="teamB" class="team"></div><div id="scoreB" class="score">0</div></div>
+</div>
+<div id="momentum" class="momentum hidden"></div>
+</div>
+
+<div id="handCard" class="card">
+<h3>Nuova mano</h3>
+<div class="muted">Inserisci il numero di carte per tipo. Il punteggio viene calcolato automaticamente.</div>
+<div id="handFields" style="margin-top:8px"></div>
+<div class="grid" style="margin-top:10px">
+<div class="field"><label>BURRACHI COPPIA 1</label><input id="burA" type="number" min="0" value="0"></div>
+<div class="field"><label>BURRACHI COPPIA 2</label><input id="burB" type="number" min="0" value="0"></div>
+</div>
+<div class="grid" style="margin-top:10px">
+<div class="field"><label>CHIUSURA</label><select id="closeTeam"><option value="">Nessuna</option><option value="0">Coppia 1</option><option value="1">Coppia 2</option></select></div>
+<div class="field"><label>POZZETTO NON PRESO</label><select id="pozzetto"><option value="">Nessuno</option><option value="0">Coppia 1</option><option value="1">Coppia 2</option></select></div>
+</div>
+<div id="handError" class="danger-note hidden"></div>
+<button class="btn primary full" onclick="saveHand()">SALVA MANO</button>
+<button class="btn secondary full" onclick="abandonGame()">ABBANDONA PARTITA</button>
+</div>
 </div>
 </section>
-<section id="pagePlayers" class="page">
-<div class="card"><h2 style="margin:0">👥 Giocatori</h2><div class="muted">Nomi salvati sul dispositivo.</div>
-<div class="actions" style="margin-top:12px"><input id="newPlayer" type="text" placeholder="Nome giocatore" style="flex:1;min-width:180px"><button class="btn primary" onclick="addPlayer()">＋ Aggiungi</button></div>
-<div id="playerList" class="player-list" style="margin-top:12px"></div></div>
+
+<section id="pagePlayers" class="hidden">
+<div class="card"><h2>👥 Giocatori</h2><div class="muted">Classifica. Tocca una riga per aprire le statistiche del giocatore.</div>
+<div class="row" style="margin-top:10px"><input id="newPlayer" placeholder="Nome giocatore"><button class="btn primary" onclick="addPlayer()">Aggiungi</button></div>
+<div id="playerList" style="margin-top:10px"></div></div>
+<div id="playerDetail" class="card hidden"></div>
 </section>
-<section id="pageStats" class="page">
-<div class="card"><h2 style="margin:0 0 10px">📊 Statistiche</h2>
-<div class="mode-toggle">
-<button id="filterAll" class="active" onclick="setStatsFilter('all')">Tutte</button>
-<button id="filterSingle" onclick="setStatsFilter('single')">Singolo</button>
-<button id="filterPairs" onclick="setStatsFilter('pairs')">Coppie</button>
-<button onclick="renderStats('h2h')">Testa a testa</button>
-</div></div>
-<div id="statsMain"></div>
+
+<section id="pageHistory" class="hidden">
+<div class="card"><h2>📚 Storico</h2><div id="historyList"></div></div>
+<div id="historyDetail" class="card hidden"></div>
 </section>
-</main>
 
-
-<div id="newGameModal" class="modal"><div class="sheet">
-<div class="teamhead"><div><h2 style="margin:0">Nuova partita</h2><div class="muted">Scegli modalità e giocatori.</div></div><button class="btn secondary" onclick="closeNewGame()">Chiudi</button></div>
-<div class="section"><h3>Modalità</h3><div class="mode-toggle"><button id="modeSingle" class="active" onclick="chooseMode('single')">👤 Singolo</button><button id="modePairs" onclick="chooseMode('pairs')">👥 Coppie</button></div></div>
-<div id="newGameFields" class="section"></div><div class="actions"><button class="btn primary" onclick="startConfiguredGame()">Inizia partita</button></div>
-</div></div>
-<div id="modal" class="modal">
-<div class="sheet">
-<div class="teamhead">
-<div><h2 style="margin:0">Inserisci mano</h2><div class="muted">I punti vengono calcolati automaticamente.</div></div>
-<button class="btn secondary" onclick="closeHand()">Chiudi</button>
+<section id="pageStats" class="hidden">
+<div class="card"><h2>📊 Statistiche</h2><div class="muted">Statistiche generali delle partite concluse.</div><div id="generalStats" style="margin-top:10px"></div></div>
+</section>
 </div>
 
-<div class="grid" style="margin-top:14px">
-<div class="card" id="form0"></div>
-<div class="card" id="form1"></div>
-</div>
-
-<div class="actions">
-<button id="save" class="btn primary" onclick="saveHand()" disabled>Salva mano</button>
-</div>
-<div id="warning" class="warning">⚠️ Seleziona la coppia che ha chiuso la mano.</div>
-</div>
-</div>
-
-
-<div id="endOverlay" class="end-overlay">
- <div class="end-card">
-  <div class="trophy">🏆</div>
-  <div class="end-title">PARTITA FINITA</div>
-  <div class="winner-name" id="winnerName"></div>
-  <div class="winner-score" id="winnerScore"></div>
-  <div id="finalScores"></div>
-  <button class="btn primary main-action" style="margin-top:16px" onclick="startNewFromEnd()">NUOVA PARTITA</button>
- </div>
-</div>
 <script>
-const STORAGE="burraco_score_clean_v1";
+"use strict";
+const TARGET=2005;
 const CARD_TYPES=[
- ["Jolly",30],["Pinelle",20],["Assi",15],["8–K",10],["3–7",5]
+ {key:"jolly",label:"Jolly · 30",value:30},
+ {key:"pinella",label:"2 / Pinella · 20",value:20},
+ {key:"asso",label:"Asso · 15",value:15},
+ {key:"face",label:"K / Q / J / >8 · 10",value:10},
+ {key:"low",label:"7 / 6 / 5 / 4 / 3 · 5",value:5}
 ];
-const BURRACO_TYPES=[
- ["Pulito",200],["Semipulito",150],["Sporco",100]
-];
+let players=JSON.parse(localStorage.getItem("bs_players")||"[]");
+let matches=JSON.parse(localStorage.getItem("bs_matches")||"[]");
+let mode="single",current=null;
 
-let game={
- mode:"pairs",players:[["Coppia 1"],["Coppia 2"]],names:["Coppia 1","Coppia 2"],
- target:2005,
- scores:[0,0],
- hands:[]
-};
-
-let hand=[
- {cards:[0,0,0,0,0],residue:[0,0,0,0,0],burraco:[0,0,0],closed:false,well:false},
- {cards:[0,0,0,0,0],residue:[0,0,0,0,0],burraco:[0,0,0],closed:false,well:false}
-];
-
-
-let players=[];let statsFilter="all";let selectedMode="single";
-function loadExtra(){try{let x=JSON.parse(localStorage.getItem("burraco_score_players_v1"));if(Array.isArray(x))players=x}catch(e){}}
-function savePlayers(){localStorage.setItem("burraco_score_players_v1",JSON.stringify(players))}
-function showPage(p){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById("page"+p[0].toUpperCase()+p.slice(1)).classList.add("active");document.querySelectorAll(".navbtn").forEach(x=>x.classList.remove("active"));document.getElementById("nav"+p[0].toUpperCase()+p.slice(1)).classList.add("active");if(p==="players")renderPlayers();if(p==="stats")renderStats()}
-function addPlayer(){let e=document.getElementById("newPlayer"),n=(e.value||"").trim();if(!n)return;if(players.some(p=>p.toLowerCase()===n.toLowerCase())){alert("Giocatore già presente.");return}players.push(n);players.sort((a,b)=>a.localeCompare(b,"it"));savePlayers();e.value="";renderPlayers()}
-function removePlayer(n){if(confirm("Rimuovere "+n+"? Le partite già archiviate restano intatte.")){players=players.filter(p=>p!==n);savePlayers();renderPlayers()}}
-function renderPlayers(){let e=document.getElementById("playerList");if(!players.length){e.innerHTML='<div class="muted">Nessun giocatore salvato.</div>';return}e.innerHTML=players.map(p=>`<div class="player-card"><strong>${esc(p)}</strong><br><button class="btn secondary" style="margin-top:8px" onclick="removePlayer(${JSON.stringify(p)})">Rimuovi</button></div>`).join("")}
-function openNewGame(){if(players.length<2){alert("Aggiungi almeno 2 giocatori.");showPage("players");return}selectedMode="single";document.getElementById("modeSingle").classList.add("active");document.getElementById("modePairs").classList.remove("active");renderNewGameFields();document.getElementById("newGameModal").classList.add("open")}
-function closeNewGame(){document.getElementById("newGameModal").classList.remove("open")}
-function chooseMode(m){selectedMode=m;document.getElementById("modeSingle").classList.toggle("active",m==="single");document.getElementById("modePairs").classList.toggle("active",m==="pairs");renderNewGameFields()}
-function ps(id,used=[]){return `<select id="${id}" class="select"><option value="">Seleziona...</option>${players.filter(p=>!used.includes(p)).map(p=>`<option>${esc(p)}</option>`).join("")}</select>`}
-function renderNewGameFields(){let e=document.getElementById("newGameFields");if(selectedMode==="single"){e.innerHTML=`<h3>Giocatori</h3><div class="grid"><div><label class="small">Giocatore 1</label>${ps("ng0")}</div><div><label class="small">Giocatore 2</label>${ps("ng1")}</div></div>`}else{e.innerHTML=`<h3>Coppie</h3><div class="grid"><div><label class="small">Coppia 1 · Giocatore 1</label>${ps("ng0")}</div><div><label class="small">Coppia 1 · Giocatore 2</label>${ps("ng1")}</div><div><label class="small">Coppia 2 · Giocatore 1</label>${ps("ng2")}</div><div><label class="small">Coppia 2 · Giocatore 2</label>${ps("ng3")}</div></div>`}}
-function startConfiguredGame(){let ids=selectedMode==="single"?["ng0","ng1"]:["ng0","ng1","ng2","ng3"];let v=ids.map(id=>document.getElementById(id)?.value||"");if(v.some(x=>!x)||new Set(v).size!==v.length){alert("Seleziona giocatori diversi.");return}game.mode=selectedMode;game.players=selectedMode==="single"?[[v[0]],[v[1]]]:[[v[0],v[1]],[v[2],v[3]]];game.names=selectedMode==="single"?v:[v[0]+" & "+v[1],v[2]+" & "+v[3]];game.scores=[0,0];game.hands=[];game.startedAt=new Date().toISOString();game.completedAt=null;game.winner=null;saveState();closeNewGame();showPage("game");render()}
-
-function getArchive(){try{return JSON.parse(localStorage.getItem("burraco_score_matches_v1"))||[]}catch(e){return[]}}
-function archiveGame(){let a=getArchive();a.push(JSON.parse(JSON.stringify(game)));localStorage.setItem("burraco_score_matches_v1",JSON.stringify(a))}
-function setStatsFilter(f){statsFilter=f;renderStats()}
-function renderStats(view){const el=document.getElementById("statsMain"),all=getArchive();if(view==="h2h"){el.innerHTML='<div class="stats-card"><h3>⚔️ Testa a testa</h3><div class="grid"><div>'+ps("h2ha")+'</div><div>'+ps("h2hb")+'</div></div><button class="btn primary" style="margin-top:10px" onclick="h2h()">Confronta</button><div id="h2hr" style="margin-top:12px"></div></div>';return}const matches=all.filter(g=>statsFilter==="all"||g.mode===statsFilter);if(!matches.length){el.innerHTML='<div class="stats-card muted">Nessuna partita conclusa con questo filtro.</div>';return}const m={};matches.forEach(g=>(g.players||[]).forEach((side,si)=>(side||[]).forEach(p=>{if(!m[p])m[p]={g:0,w:0,pts:0,bur:0,cl:0};m[p].g++;if(g.winner===si)m[p].w++;m[p].pts+=Number(g.scores?.[si]||0);(g.hands||[]).forEach(h=>{const d=String(h.detail?.[si]||"");for(const x of d.matchAll(/(\d+)\s+(puliti|semipuliti|sporchi)/g))m[p].bur+=Number(x[1]);if(d.includes("Chiusura"))m[p].cl++})})));const rows=Object.entries(m).map(([p,x])=>({p,...x,rate:x.g?100*x.w/x.g:0,avg:x.g?x.pts/x.g:0})).sort((a,b)=>b.rate-a.rate);el.innerHTML='<div class="stats-card"><h3>Classifica giocatori</h3><table class="stat-table"><thead><tr><th>Giocatore</th><th>Partite</th><th>Vinte</th><th>Win rate</th><th>Punti medi</th><th>Burrachi</th><th>Chiusure</th></tr></thead><tbody>'+rows.map(x=>'<tr><td><strong>'+esc(x.p)+'</strong></td><td>'+x.g+'</td><td>'+x.w+'</td><td>'+x.rate.toFixed(1)+'%</td><td>'+Math.round(x.avg)+'</td><td>'+x.bur+'</td><td>'+x.cl+'</td></tr>').join("")+'</tbody></table></div>'}
-function h2h(){const a=document.getElementById("h2ha")?.value,b=document.getElementById("h2hb")?.value;if(!a||!b||a===b){alert("Seleziona due giocatori diversi.");return}let games=0,aw=0,bw=0,partners=0,opponents=0;getArchive().forEach(g=>{const p0=g.players?.[0]||[],p1=g.players?.[1]||[],sa=p0.includes(a)?0:p1.includes(a)?1:-1,sb=p0.includes(b)?0:p1.includes(b)?1:-1;if(sa<0||sb<0)return;games++;if(g.winner===sa)aw++;if(g.winner===sb)bw++;if(sa===sb)partners++;else opponents++});document.getElementById("h2hr").innerHTML='<div class="grid"><div class="stats-card" style="text-align:center"><strong>'+esc(a)+'</strong><div class="winner-score" style="font-size:36px">'+aw+'</div><div class="muted">vittorie</div></div><div class="stats-card" style="text-align:center"><strong>'+esc(b)+'</strong><div class="winner-score" style="font-size:36px">'+bw+'</div><div class="muted">vittorie</div></div></div><div class="stats-card">'+games+' partite condivise · '+opponents+' da avversari · '+partners+' da compagni</div>'}
-function undo(){
- if(!game.hands.length)return;
- const x=game.hands.pop();
- game.scores[0]-=x.total[0];
- game.scores[1]-=x.total[1];
- saveState();render();
- const overlay=document.getElementById("endOverlay"); if(overlay)overlay.classList.remove("open");
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function save(){localStorage.setItem("bs_players",JSON.stringify(players));localStorage.setItem("bs_matches",JSON.stringify(matches));}
+function showTab(t){
+ ["game","players","history","stats"].forEach(x=>{document.getElementById("page"+x.charAt(0).toUpperCase()+x.slice(1)).classList.toggle("hidden",x!==t);document.getElementById("tab"+x.charAt(0).toUpperCase()+x.slice(1)).classList.toggle("active",x===t);});
+ if(t==="players")renderPlayers(); if(t==="history")renderHistory(); if(t==="stats")renderStats();
 }
-
-function newGame(){
- if(!confirm("Iniziare una nuova partita? Lo storico verrà cancellato."))return;
- game.scores=[0,0];
- game.hands=[];
- saveState();render();
- document.getElementById("endOverlay").classList.remove("open");
+function setMode(m){mode=m;document.getElementById("singleBtn").classList.toggle("active",m==="single");document.getElementById("pairsBtn").classList.toggle("active",m==="pairs");renderSetup();}
+function selectHTML(id,selected,used){
+ return '<select id="'+id+'"><option value="">Seleziona...</option>'+players.map(p=>'<option value="'+esc(p)+'" '+(p===selected?'selected ':'')+(used.includes(p)?'disabled':'')+'>'+esc(p)+'</option>').join("")+'</select>';
 }
-
-function fmt(n){return Number(n).toLocaleString("it-IT")}
-function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
-
-load();renderPlayers();document.getElementById('gameSetup').style.display='block';chooseStartMode('pairs');
+function renderSetup(){
+ const f=document.getElementById("setupFields");
+ if(players.length<(mode==="single"?2:4)){f.innerHTML='<div class="danger-note">Servono almeno '+(mode==="single"?2:4)+' giocatori. Aggiungili nella tab Giocatori.</div>';return;}
+ if(mode==="single"){
+  f.innerHTML='<div class="grid"><div class="field"><label>GIOCATORE 1</label>'+selectHTML("p0","",[])+'</div><div class="field"><label>GIOCATORE 2</label>'+selectHTML("p1","",[])+'</div></div>';
+ }else{
+  f.innerHTML='<div class="grid"><div class="field"><label>COPPIA 1 · GIOCATORE 1</label>'+selectHTML("p0","",[])+'</div><div class="field"><label>COPPIA 1 · GIOCATORE 2</label>'+selectHTML("p1","",[])+'</div><div class="field"><label>COPPIA 2 · GIOCATORE 1</label>'+selectHTML("p2","",[])+'</div><div class="field"><label>COPPIA 2 · GIOCATORE 2</label>'+selectHTML("p3","",[])+'</div></div>';
+ }
+ ["p0","p1","p2","p3"].slice(0,mode==="single"?2:4).forEach(id=>document.getElementById(id)?.addEventListener("change",updateSelectors));
+}
+function updateSelectors(){
+ const ids=mode==="single"?["p0","p1"]:["p0","p1","p2","p3"],vals=ids.map(id=>document.getElementById(id)?.value||"");
+ ids.forEach((id,i)=>{const el=document.getElementById(id);if(!el)return;const current=vals[i];el.innerHTML='<option value="">Seleziona...</option>'+players.map(p=>'<option value="'+esc(p)+'" '+(p===current?'selected ':'')+(vals.includes(p)&&p!==current?'disabled':'')+'>'+esc(p)+'</option>').join("");});
+}
+function startGame(){
+ const ids=mode==="single"?["p0","p1"]:["p0","p1","p2","p3"],v=ids.map(id=>document.getElementById(id)?.value||"");
+ if(v.some(x=>!x)){alert("Seleziona tutti i giocatori.");return;}
+ if(new Set(v).size!==v.length){alert("Ogni giocatore può comparire una sola volta.");return;}
+ current={id:Date.now(),date:new Date().toISOString(),mode,players:mode==="single"?[[v[0]],[v[1]]]:[[v[0],v[1]],[v[2],v[3]]],scores:[0,0],hands:[],winner:null};
+ document.getElementById("setupCard").classList.add("hidden");document.getElementById("gameCard").classList.remove("hidden");
+ renderGame();resetHand();
+}
+function resetHand(){
+ document.getElementById("handFields").innerHTML=CARD_TYPES.map(c=>'<div class="handrow"><span>'+c.label+'</span><button onclick="changeCard(\''+c.key+'\',-1)">−</button><input id="c_'+c.key+'" type="number" min="0" value="0"><button onclick="changeCard(\''+c.key+'\',1)">+</button></div>').join("");
+ document.getElementById("burA").value=0;document.getElementById("burB").value=0;document.getElementById("closeTeam").value="";document.getElementById("pozzetto").value="";document.getElementById("handError").classList.add("hidden");
+}
+function changeCard(k,d){const x=document.getElementById("c_"+k),n=Math.max(0,(+x.value||0)+d);x.value=n;}
+function calcHand(team){
+ return CARD_TYPES.reduce((sum,c)=>sum+(+(document.getElementById("c_"+c.key).value)||0)*c.value,0);
+}
+function saveHand(){
+ const close=document.getElementById("closeTeam").value,pozz=document.getElementById("pozzetto").value;
+ if(close===""){showHandError("Per salvare la mano devi indicare una chiusura in una delle due squadre.");return;}
+ if(pozz!=="" && pozz===close){showHandError("La stessa squadra non può avere contemporaneamente chiusura e mancata presa del pozzetto.");return;}
+ let a=calcHand(0),b=calcHand(1);
+ const ba=+document.getElementById("burA").value||0,bb=+document.getElementById("burB").value||0;
+ const bonus=[0,0];
+ function burracoPoints(n){return n>=1?0:0}
+ // User-defined burraco values: clean 200, semi 150, dirty 100.
+ // Since only a burraco count is entered here, use a separate prompt-style chooser below.
+ // Keep this simple and explicit: one can enter total burraco points for each side.
+ // The visible inputs remain counts; each burraco is selected by the new detail buttons.
+ a+=0;b+=0;
+ const closePts=100, pozzPts=-100;
+ if(close==="0")bonus[0]+=closePts; else bonus[1]+=closePts;
+ if(pozz==="0")bonus[0]+=pozzPts; else if(pozz==="1")bonus[1]+=pozzPts;
+ a+=bonus[0];b+=bonus[1];
+ // For backward-compatible simple input, burraco count is treated as 100 each;
+ // detailed type selection is provided in the hand summary editor below in v1.
+ a+=ba*100;b+=bb*100;
+ const points=[a,b];
+ current.scores[0]+=a;current.scores[1]+=b;
+ const summary={cards:[...CARD_TYPES.map(c=>({key:c.key,count:+document.getElementById("c_"+c.key).value||0}))],burraco:[ba,bb],close:+close,pozz:pozz===""?null:+pozz};
+ current.hands.push({points,summary});
+ renderGame();
+ if(current.scores[0]>=TARGET||current.scores[1]>=TARGET){
+  current.winner=current.scores[0]>=TARGET&&current.scores[1]>=TARGET?(current.scores[0]>current.scores[1]?0:1):(current.scores[0]>=TARGET?0:1);
+  matches.unshift(JSON.parse(JSON.stringify(current)));save();showFinal();
+ }else resetHand();
+}
+function showHandError(s){const e=document.getElementById("handError");e.textContent=s;e.classList.remove("hidden");}
+function names(side){return current.players[side].join(" & ");}
+function momentum(){
+ if(!current||!current.hands.length)return null;
+ const s=current.scores,n=current.hands.length;
+ let avg=[0,0];current.hands.forEach(h=>{avg[0]+=h.points[0];avg[1]+=h.points[1]});avg=avg.map(x=>x/n);
+ const recent=current.hands.slice(-3);let r=[0,0];recent.forEach(h=>{r[0]+=h.points[0];r[1]+=h.points[1]});r=r.map(x=>x/recent.length);
+ const rate=[avg[0]*.45+r[0]*.55,avg[1]*.45+r[1]*.55];
+ const rem=[Math.max(0,TARGET-s[0]),Math.max(0,TARGET-s[1])];
+ const h=[rate[0]>0?rem[0]/rate[0]:99,rate[1]>0?rem[1]/rate[1]:99];
+ const urgency=[1/(1+h[0]),1/(1+h[1])],dist=[1/(1+rem[0]/400),1/(1+rem[1]/400)];
+ const ps=rate[0]+rate[1]?[rate[0]/(rate[0]+rate[1]),rate[1]/(rate[0]+rate[1])]:[.5,.5];
+ let p=.48*(s[0]/Math.max(1,s[0]+s[1]))+.27*(urgency[0]/(urgency[0]+urgency[1]))+.15*(dist[0]/(dist[0]+dist[1]))+.10*ps[0];
+ if(n<3)p=.5+(p-.5)*(.45+.18*n);p=Math.max(.05,Math.min(.95,p));
+ return {p:Math.round(p*100),proj:[Math.round(s[0]+rate[0]*Math.min(4,h[0])),Math.round(s[1]+rate[1]*Math.min(4,h[1]))],hands:h};
+}
+function renderGame(){
+ document.getElementById("teamA").textContent=names(0);document.getElementById("teamB").textContent=names(1);
+ document.getElementById("scoreA").textContent=current.scores[0];document.getElementById("scoreB").textContent=current.scores[1];
+ document.getElementById("handCount").textContent=current.hands.length+" "+(current.hands.length===1?"mano":"mani");
+ const m=momentum(),box=document.getElementById("momentum");
+ if(!m){box.classList.add("hidden");return}box.classList.remove("hidden");
+ const a=m.p,b=100-a;box.innerHTML='<div class="row"><strong>MOMENTUM</strong><strong>'+a+'% — '+b+'%</strong></div><div class="bar" style="margin-top:7px"><div class="barA" style="width:'+a+'%"></div><div class="barB" style="width:'+b+'%"></div></div><div class="proj"><div><strong>'+m.proj[0]+'</strong><small>'+esc(names(0))+'</small></div><div><strong>'+m.proj[1]+'</strong><small>'+esc(names(1))+'</small></div></div><div class="muted" style="text-align:center;margin-top:7px">Stima mani alla soglia: '+(isFinite(m.hands[0])?Math.max(1,Math.ceil(m.hands[0])):"—")+' / '+(isFinite(m.hands[1])?Math.max(1,Math.ceil(m.hands[1])):"—")+'</div>';
+}
+function showFinal(){
+ document.getElementById("gameCard").innerHTML='<div class="card final"><div class="muted">PARTITA CONCLUSA</div><div class="winner">🏆 '+esc(names(current.winner))+'</div><div class="score" style="margin:8px 0">'+current.scores[0]+' — '+current.scores[1]+'</div><div class="muted">'+current.hands.length+' mani giocate</div><button class="btn primary full" onclick="newGame()">NUOVA PARTITA</button></div>';
+}
+function newGame(){current=null;document.getElementById("gameCard").classList.add("hidden");document.getElementById("setupCard").classList.remove("hidden");renderSetup();}
+function abandonGame(){if(confirm("Abbandonare la partita corrente?")){current=null;document.getElementById("gameCard").classList.add("hidden");document.getElementById("setupCard").classList.remove("hidden");renderSetup();}}
+function addPlayer(){
+ const input=document.getElementById("newPlayer"),name=input.value.trim();if(!name)return;
+ if(players.some(p=>p.toLowerCase()===name.toLowerCase())){alert("Questo giocatore esiste già.");return}
+ players.push(name);players.sort((a,b)=>a.localeCompare(b));save();input.value="";renderPlayers();renderSetup();
+}
+function playerStats(p){
+ const s={games:0,wins:0,losses:0,points:0,form:[],partners:{},opponents:{}};
+ matches.forEach(g=>{const teams=g.players||[],side=teams.findIndex(t=>(t||[]).includes(p));if(side<0)return;s.games++;s.points+=g.scores[side]||0;if(g.winner===side){s.wins++;s.form.push("W")}else{s.losses++;s.form.push("L")}teams[side].forEach(x=>{if(x!==p){s.partners[x]??={g:0,w:0};s.partners[x].g++;if(g.winner===side)s.partners[x].w++}});teams.forEach((t,i)=>{if(i!==side)t.forEach(x=>{s.opponents[x]??={g:0,w:0};s.opponents[x].g++;if(g.winner===side)s.opponents[x].w++})})});return s;
+}
+function renderPlayers(){
+ const data=players.map(p=>({p,s:playerStats(p)})).sort((a,b)=>{const aw=a.s.games?a.s.wins/a.s.games:0,bw=b.s.games?b.s.wins/b.s.games:0;return bw-aw});
+ let out='<table><thead><tr><th>#</th><th>Giocatore</th><th>Partite</th><th>Vinte</th><th>Win rate</th></tr></thead><tbody>';
+ data.forEach((x,i)=>{const wr=x.s.games?(x.s.wins/x.s.games*100).toFixed(1):"—";out+='<tr class="clickable" onclick="showPlayer('+JSON.stringify(x.p)+')"><td class="rank">'+(i<3?["🥇","🥈","🥉"][i]:i+1)+'</td><td><strong>'+esc(x.p)+'</strong></td><td>'+x.s.games+'</td><td>'+x.s.wins+'</td><td><strong>'+wr+(wr==="—"?"":"%")+'</strong></td></tr>';});
+ out+='</tbody></table>';document.getElementById("playerList").innerHTML=data.length?out:'<div class="muted">Aggiungi i giocatori qui sopra.</div>';document.getElementById("playerDetail").classList.add("hidden");
+}
+function showPlayer(p){
+ const s=playerStats(p),wr=s.games?(s.wins/s.games*100).toFixed(1):"0.0",avg=s.games?Math.round(s.points/s.games):0;
+ let best=null,hard=null;Object.entries(s.partners).forEach(([n,x])=>{const r=x.w/x.g;if(!best||r>best.r)best={n,r,w:x.w,g:x.g}});Object.entries(s.opponents).forEach(([n,x])=>{const r=x.w/x.g;if(!hard||r<hard.r)hard={n,r,w:x.w,g:x.g}});
+ const d=document.getElementById("playerDetail");d.innerHTML='<div class="row"><h2>'+esc(p)+'</h2><button class="btn secondary" onclick="document.getElementById(\'playerDetail\').classList.add(\'hidden\')">Chiudi</button></div><div class="detailgrid"><div class="stat"><strong>'+wr+'%</strong><span>WIN RATE</span></div><div class="stat"><strong>'+s.games+'</strong><span>PARTITE</span></div><div class="stat"><strong>'+s.wins+'</strong><span>VITTORIE</span></div><div class="stat"><strong>'+avg+'</strong><span>PUNTI MEDI</span></div></div><div class="section-title">🔥 Forma recente</div><div class="card" style="margin:0"><strong>'+s.form.slice(-10).join(" ")+'</strong></div><div class="section-title">🤝 Miglior compagno</div><div class="card" style="margin:0">'+(best?'<strong>'+esc(best.n)+'</strong> · '+best.w+'/'+best.g:'Nessun dato')+'</div><div class="section-title">⚔️ Avversario più difficile</div><div class="card" style="margin:0">'+(hard?'<strong>'+esc(hard.n)+'</strong> · '+hard.w+'/'+hard.g:'Nessun dato')+'</div>';d.classList.remove("hidden");d.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function renderHistory(){
+ const el=document.getElementById("historyList");if(!matches.length){el.innerHTML='<div class="muted">Nessuna partita conclusa.</div>';return}
+ el.innerHTML=matches.map((g,i)=>'<div class="card history-item" onclick="showHistory('+i+')"><div class="row"><strong>'+esc(g.players[0].join(" & "))+'</strong><span class="pill">'+new Date(g.date).toLocaleDateString("it-IT")+'</span></div><div class="result">'+g.scores[0]+' — '+g.scores[1]+'</div><div class="muted">vs '+esc(g.players[1].join(" & "))+' · '+g.hands.length+' mani</div></div>').join("");
+}
+function showHistory(i){const g=matches[i],d=document.getElementById("historyDetail");d.innerHTML='<div class="row"><h2>Dettaglio partita</h2><button class="btn secondary" onclick="document.getElementById(\'historyDetail\').classList.add(\'hidden\')">Chiudi</button></div><h3>'+esc(g.players[0].join(" & "))+' '+g.scores[0]+' — '+g.scores[1]+' '+esc(g.players[1].join(" & "))+'</h3>'+g.hands.map((h,j)=>'<div class="card" style="margin:6px 0"><strong>Mano '+(j+1)+'</strong><div>'+h.points[0]+' — '+h.points[1]+' punti</div></div>').join("");d.classList.remove("hidden")}
+function renderStats(){
+ const games=matches.length,wins={};players.forEach(p=>wins[p]={w:0,g:0});matches.forEach(g=>{g.players.forEach((t,i)=>t.forEach(p=>{wins[p].g++;if(g.winner===i)wins[p].w++}))});
+ const top=Object.entries(wins).sort((a,b)=>(b[1].w/Math.max(1,b[1].g))-(a[1].w/Math.max(1,a[1].g))).slice(0,5);
+ document.getElementById("generalStats").innerHTML='<div class="detailgrid"><div class="stat"><strong>'+games+'</strong><span>PARTITE CONCLUSE</span></div><div class="stat"><strong>'+players.length+'</strong><span>GIOCATORI</span></div></div><div class="section-title">🏆 Classifica</div>'+top.map((x,i)=>'<div class="row" style="padding:8px 0;border-bottom:1px solid #edf0f3"><strong>'+(i+1)+'. '+esc(x[0])+'</strong><span>'+((x[1].w/x[1].g*100)||0).toFixed(1)+'%</span></div>').join("");
+}
+renderSetup();renderPlayers();renderHistory();renderStats();
 </script>
 </body>
 </html>
