@@ -346,10 +346,22 @@ function showPlayer(p){
  const d=document.getElementById("playerDetail");d.innerHTML='<div class="row"><h2>'+esc(p)+'</h2><button class="btn secondary" onclick="document.getElementById(\'playerDetail\').classList.add(\'hidden\')">Chiudi</button></div><div class="detailgrid"><div class="stat"><strong>'+wr+'%</strong><span>WIN RATE</span></div><div class="stat"><strong>'+s.games+'</strong><span>PARTITE</span></div><div class="stat"><strong>'+s.wins+'</strong><span>VITTORIE</span></div><div class="stat"><strong>'+avg+'</strong><span>PUNTI MEDI</span></div></div><div class="section-title">🔥 Forma recente</div><div class="card" style="margin:0"><strong>'+s.form.slice(-10).join(" ")+'</strong></div><div class="section-title">🤝 Miglior compagno</div><div class="card" style="margin:0">'+(best?'<strong>'+esc(best.n)+'</strong> · '+best.w+'/'+best.g:'Nessun dato')+'</div><div class="section-title">⚔️ Avversario più difficile</div><div class="card" style="margin:0">'+(hard?'<strong>'+esc(hard.n)+'</strong> · '+hard.w+'/'+hard.g:'Nessun dato')+'</div>';d.classList.remove("hidden");d.scrollIntoView({behavior:"smooth",block:"start"});
 }
 function renderHistory(){
- const el=document.getElementById("historyList");if(!matches.length){el.innerHTML='<div class="muted">Nessuna partita conclusa.</div>';return}
- el.innerHTML=matches.map((g,i)=>'<div class="card history-item" onclick="showHistory('+i+')"><div class="row"><strong>'+esc(g.players[0].join(" & "))+'</strong><span class="pill">'+new Date(g.date).toLocaleDateString("it-IT")+'</span></div><div class="result">'+g.scores[0]+' — '+g.scores[1]+'</div><div class="muted">vs '+esc(g.players[1].join(" & "))+' · '+g.hands.length+' mani</div></div>').join("");
+  const el=document.getElementById("historyList");
+  if(!matches.length){el.innerHTML='<div class="muted">Nessuna partita conclusa.</div>';return}
+  el.innerHTML=matches.map((g,i)=>{
+    const teams=g.players||[["—"],["—"]], scores=g.scores||[0,0];
+    return '<div class="card history-item" onclick="showHistory('+i+')"><div class="row"><strong>'+esc((teams[0]||[]).join(" & "))+'</strong><span class="pill">'+new Date(g.date).toLocaleDateString("it-IT")+'</span></div><div class="result">'+scores[0]+' — '+scores[1]+'</div><div class="muted">vs '+esc((teams[1]||[]).join(" & "))+' · '+((g.hands||[]).length)+' mani'+(g.cloudGameId?' · ☁️ Cloud':'')+'</div></div>';
+  }).join("");
 }
-function showHistory(i){const g=matches[i],d=document.getElementById("historyDetail");d.innerHTML='<div class="row"><h2>Dettaglio partita</h2><button class="btn secondary" onclick="document.getElementById(\'historyDetail\').classList.add(\'hidden\')">Chiudi</button></div><h3>'+esc(g.players[0].join(" & "))+' '+g.scores[0]+' — '+g.scores[1]+' '+esc(g.players[1].join(" & "))+'</h3>'+g.hands.map((h,j)=>'<div class="card" style="margin:6px 0"><strong>Mano '+(j+1)+'</strong><div>'+h.points[0]+' — '+h.points[1]+' punti</div></div>').join("");d.classList.remove("hidden")}
+
+function showHistory(i){
+  const g=matches[i],d=document.getElementById("historyDetail");
+  const teams=g.players||[["—"],["—"]],scores=g.scores||[0,0],hands=g.hands||[];
+  d.innerHTML='<div class="row"><h2>Dettaglio partita</h2><button class="btn secondary" onclick="document.getElementById(\'historyDetail\').classList.add(\'hidden\')">Chiudi</button></div><h3>'+esc((teams[0]||[]).join(" & "))+' '+scores[0]+' — '+scores[1]+' '+esc((teams[1]||[]).join(" & "))+'</h3>'+
+    hands.map((h,j)=>'<div class="card" style="margin:6px 0"><strong>Mano '+(j+1)+'</strong><div>'+((h.points||[0,0])[0])+' — '+((h.points||[0,0])[1])+' punti</div>'+(h.starter?'<div class="muted">Inizia: '+esc(h.starter)+'</div>':'')+'</div>').join("");
+  d.classList.remove("hidden");
+}
+
 function renderStats(){
  const games=matches.length,wins={};players.forEach(p=>wins[p]={w:0,g:0});matches.forEach(g=>{g.players.forEach((t,i)=>t.forEach(p=>{wins[p].g++;if(g.winner===i)wins[p].w++}))});
  const top=Object.entries(wins).sort((a,b)=>(b[1].w/Math.max(1,b[1].g))-(a[1].w/Math.max(1,a[1].g))).slice(0,5);
@@ -607,6 +619,75 @@ window.burracoCloudSaveGame=async function(game){
     return null;
   }
 };
+</script>
+
+<script type="module">
+const cloudHistory=window.burracoSupabase;
+
+async function loadCloudHistory(){
+  if(!cloudHistory) return;
+  try{
+    const {data:{user},error:uerr}=await cloudHistory.auth.getUser();
+    if(uerr||!user)return;
+    const {data:members,error:merr}=await cloudHistory.from("group_members").select("group_id").eq("user_id",user.id).limit(1);
+    if(merr)throw merr;
+    if(!members?.length)return;
+    const groupId=members[0].group_id;
+
+    const {data:games,error:gerr}=await cloudHistory.from("games")
+      .select("id,created_at,mode,winner_team,final_score_1,final_score_2,status")
+      .eq("group_id",groupId).eq("status","finished").order("created_at",{ascending:false});
+    if(gerr)throw gerr;
+    if(!games?.length)return;
+
+    const ids=games.map(g=>g.id);
+    const {data:gp,error:gperr}=await cloudHistory.from("game_players").select("game_id,player_id,team,position").in("game_id",ids);
+    if(gperr)throw gperr;
+
+    const pids=[...new Set((gp||[]).map(x=>x.player_id))];
+    let pmap={};
+    if(pids.length){
+      const {data:ps,error:perr}=await cloudHistory.from("players").select("id,name").in("id",pids);
+      if(perr)throw perr;
+      (ps||[]).forEach(p=>pmap[p.id]=p.name);
+    }
+
+    const {data:hands,error:herr}=await cloudHistory.from("hands").select("id,game_id,hand_number,starter_player_id").in("game_id",ids).order("hand_number",{ascending:true});
+    if(herr)throw herr;
+    const hids=(hands||[]).map(h=>h.id);
+    let scores=[];
+    if(hids.length){
+      const {data:ss,error:serr}=await cloudHistory.from("hand_scores")
+        .select("hand_id,team,total,closing").in("hand_id",hids);
+      if(serr)throw serr;
+      scores=ss||[];
+    }
+
+    const cloudMatches=games.map(g=>{
+      const rows=(gp||[]).filter(x=>x.game_id===g.id);
+      const teams=[[],[]];
+      rows.forEach(r=>teams[Math.max(0,Math.min(1,(r.team||1)-1))].push({name:pmap[r.player_id]||"Giocatore",position:r.position||""}));
+      teams.forEach(t=>t.sort((a,b)=>String(a.position).localeCompare(String(b.position))));
+      const hs=(hands||[]).filter(h=>h.game_id===g.id).sort((a,b)=>a.hand_number-b.hand_number).map(h=>{
+        const sr=scores.filter(s=>s.hand_id===h.id), pts=[0,0];
+        sr.forEach(s=>{pts[Math.max(0,Math.min(1,(s.team||1)-1))]=Number(s.total||0)});
+        return {points:pts,starter:pmap[h.starter_player_id]||""};
+      });
+      return {id:"cloud-"+g.id,cloudGameId:g.id,date:g.created_at,mode:g.mode,
+        players:teams.map(t=>t.map(x=>x.name)),scores:[Number(g.final_score_1||0),Number(g.final_score_2||0)],
+        winner:g.winner_team==null?-1:Number(g.winner_team)-1,hands:hs};
+    });
+
+    const localOnly=matches.filter(g=>!g.cloudGameId);
+    matches=[...cloudMatches,...localOnly].sort((a,b)=>new Date(b.date)-new Date(a.date));
+    save(); renderHistory();
+  }catch(err){console.error("Burraco Score cloud history error",err);}
+}
+window.loadCloudHistory=loadCloudHistory;
+
+const {data:{session}}=await cloudHistory.auth.getSession();
+if(session)loadCloudHistory();
+cloudHistory.auth.onAuthStateChange((_event,s)=>{if(s)loadCloudHistory();});
 </script>
 </body>
 </html>
