@@ -54,27 +54,28 @@ label.small{font-size:12px;color:#687384;display:block;margin-bottom:5px}
  .scorebox{min-height:135px;padding:14px}.scorebox .big{font-size:34px}.scorebox .team{font-size:14px}
  main{margin-top:12px}.desktop-setup{padding:13px}
 }
+
+<style>
+.navbar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}.navbtn{border:1px solid #dfe3e8;background:#fff;border-radius:11px;padding:11px;font-weight:800;cursor:pointer}.navbtn.active{background:#111827;color:#fff}.page{display:none}.page.active{display:block}.player-list{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.player-card{background:#f7f8fa;border-radius:12px;padding:13px}.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.stat{background:#f7f8fa;border-radius:12px;padding:12px;text-align:center}.stat .v{font-size:25px;font-weight:900}.stat .l{font-size:11px;color:#687384}.select{width:100%;padding:11px;border:1px solid #d9dee5;border-radius:10px;font-size:16px;background:#fff}.mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mode-toggle button{padding:11px;border:1px solid #d9dee5;background:#fff;border-radius:10px;font-weight:800}.mode-toggle button.active{background:#2457d6;color:#fff}@media(max-width:650px){.player-list{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
-
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#111827">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Burraco Score">
-<link rel="apple-touch-icon" href="icons/icon-180.png">
-
+</style>
 </head>
 <body>
 
 <header>
 <div class="top">
 <div><h1>🃏 Burraco Score</h1><div class="sub">Segnapunti per partite di Burraco</div></div>
-<button class="btn secondary" onclick="newGame()">Nuova partita</button>
+<button class="btn secondary" onclick="openNewGame()">Nuova partita</button>
 </div>
 </header>
 
 <main>
-<div class="card">
+<div class="navbar">
+<button class="navbtn active" id="navGame" onclick="showPage('game')">🎮 Partita</button>
+<button class="navbtn" id="navPlayers" onclick="showPage('players')">👥 Giocatori</button>
+<button class="navbtn" id="navStats" onclick="showPage('stats')">📊 Statistiche</button>
+</div>
+<section id="pageGame" class="page active"><div class="card">
 <div class="grid">
 <div><label class="small">Coppia 1</label><input id="name0" value="Coppia 1" oninput="updateNames()"></div>
 <div><label class="small">Coppia 2</label><input id="name1" value="Coppia 2" oninput="updateNames()"></div>
@@ -100,8 +101,30 @@ label.small{font-size:12px;color:#687384;display:block;margin-bottom:5px}
 <div class="muted">Il punteggio viene salvato automaticamente nel browser.</div>
 <div id="history" style="margin-top:8px"></div>
 </div>
+</section>
+<section id="pagePlayers" class="page">
+<div class="card"><h2 style="margin:0">👥 Giocatori</h2><div class="muted">Nomi salvati sul dispositivo.</div>
+<div class="actions" style="margin-top:12px"><input id="newPlayer" type="text" placeholder="Nome giocatore" style="flex:1;min-width:180px"><button class="btn primary" onclick="addPlayer()">＋ Aggiungi</button></div>
+<div id="playerList" class="player-list" style="margin-top:12px"></div></div>
+</section>
+<section id="pageStats" class="page">
+<div class="card"><h2 style="margin:0 0 10px">📊 Statistiche</h2>
+<div class="mode-toggle">
+<button id="filterAll" class="active" onclick="setStatsFilter('all')">Tutte</button>
+<button id="filterSingle" onclick="setStatsFilter('single')">Singolo</button>
+<button id="filterPairs" onclick="setStatsFilter('pairs')">Coppie</button>
+<button onclick="renderStats('h2h')">Testa a testa</button>
+</div></div>
+<div id="statsMain"></div>
+</section>
 </main>
 
+
+<div id="newGameModal" class="modal"><div class="sheet">
+<div class="teamhead"><div><h2 style="margin:0">Nuova partita</h2><div class="muted">Scegli modalità e giocatori.</div></div><button class="btn secondary" onclick="closeNewGame()">Chiudi</button></div>
+<div class="section"><h3>Modalità</h3><div class="mode-toggle"><button id="modeSingle" class="active" onclick="chooseMode('single')">👤 Singolo</button><button id="modePairs" onclick="chooseMode('pairs')">👥 Coppie</button></div></div>
+<div id="newGameFields" class="section"></div><div class="actions"><button class="btn primary" onclick="startConfiguredGame()">Inizia partita</button></div>
+</div></div>
 <div id="modal" class="modal">
 <div class="sheet">
 <div class="teamhead">
@@ -142,7 +165,7 @@ const BURRACO_TYPES=[
 ];
 
 let game={
- names:["Coppia 1","Coppia 2"],
+ mode:"pairs",players:[["Coppia 1"],["Coppia 2"]],names:["Coppia 1","Coppia 2"],
  target:2005,
  scores:[0,0],
  hands:[]
@@ -153,7 +176,29 @@ let hand=[
  {cards:[0,0,0,0,0],residue:[0,0,0,0,0],burraco:[0,0,0],closed:false,well:false}
 ];
 
+
+let players=[];let statsFilter="all";let selectedMode="single";
+function loadExtra(){try{let x=JSON.parse(localStorage.getItem("burraco_score_players_v1"));if(Array.isArray(x))players=x}catch(e){}}
+function savePlayers(){localStorage.setItem("burraco_score_players_v1",JSON.stringify(players))}
+function showPage(p){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById("page"+p[0].toUpperCase()+p.slice(1)).classList.add("active");document.querySelectorAll(".navbtn").forEach(x=>x.classList.remove("active"));document.getElementById("nav"+p[0].toUpperCase()+p.slice(1)).classList.add("active");if(p==="players")renderPlayers();if(p==="stats")renderStats()}
+function addPlayer(){let e=document.getElementById("newPlayer"),n=(e.value||"").trim();if(!n)return;if(players.some(p=>p.toLowerCase()===n.toLowerCase())){alert("Giocatore già presente.");return}players.push(n);players.sort((a,b)=>a.localeCompare(b,"it"));savePlayers();e.value="";renderPlayers()}
+function removePlayer(n){if(confirm("Rimuovere "+n+"? Le partite già archiviate restano intatte.")){players=players.filter(p=>p!==n);savePlayers();renderPlayers()}}
+function renderPlayers(){let e=document.getElementById("playerList");if(!players.length){e.innerHTML='<div class="muted">Nessun giocatore salvato.</div>';return}e.innerHTML=players.map(p=>`<div class="player-card"><strong>${esc(p)}</strong><br><button class="btn secondary" style="margin-top:8px" onclick="removePlayer(${JSON.stringify(p)})">Rimuovi</button></div>`).join("")}
+function openNewGame(){if(players.length<2){alert("Aggiungi almeno 2 giocatori.");showPage("players");return}selectedMode="single";document.getElementById("modeSingle").classList.add("active");document.getElementById("modePairs").classList.remove("active");renderNewGameFields();document.getElementById("newGameModal").classList.add("open")}
+function closeNewGame(){document.getElementById("newGameModal").classList.remove("open")}
+function chooseMode(m){selectedMode=m;document.getElementById("modeSingle").classList.toggle("active",m==="single");document.getElementById("modePairs").classList.toggle("active",m==="pairs");renderNewGameFields()}
+function ps(id,used=[]){return `<select id="${id}" class="select"><option value="">Seleziona...</option>${players.filter(p=>!used.includes(p)).map(p=>`<option>${esc(p)}</option>`).join("")}</select>`}
+function renderNewGameFields(){let e=document.getElementById("newGameFields");if(selectedMode==="single"){e.innerHTML=`<h3>Giocatori</h3><div class="grid"><div><label class="small">Giocatore 1</label>${ps("ng0")}</div><div><label class="small">Giocatore 2</label>${ps("ng1")}</div></div>`}else{e.innerHTML=`<h3>Coppie</h3><div class="grid"><div><label class="small">Coppia 1 · Giocatore 1</label>${ps("ng0")}</div><div><label class="small">Coppia 1 · Giocatore 2</label>${ps("ng1")}</div><div><label class="small">Coppia 2 · Giocatore 1</label>${ps("ng2")}</div><div><label class="small">Coppia 2 · Giocatore 2</label>${ps("ng3")}</div></div>`}}
+function startConfiguredGame(){let ids=selectedMode==="single"?["ng0","ng1"]:["ng0","ng1","ng2","ng3"];let v=ids.map(id=>document.getElementById(id)?.value||"");if(v.some(x=>!x)||new Set(v).size!==v.length){alert("Seleziona giocatori diversi.");return}game.mode=selectedMode;game.players=selectedMode==="single"?[[v[0]],[v[1]]]:[[v[0],v[1]],[v[2],v[3]]];game.names=selectedMode==="single"?v:[v[0]+" & "+v[1],v[2]+" & "+v[3]];game.scores=[0,0];game.hands=[];game.startedAt=new Date().toISOString();game.completedAt=null;game.winner=null;saveState();closeNewGame();showPage("game");render()}
+function getArchive(){try{return JSON.parse(localStorage.getItem("burraco_score_matches_v1"))||[]}catch(e){return[]}}
+function archiveGame(){let a=getArchive();a.push(JSON.parse(JSON.stringify(game)));localStorage.setItem("burraco_score_matches_v1",JSON.stringify(a))}
+function setStatsFilter(f){statsFilter=f;renderStats()}
+function playerStats(matches){let m={};matches.forEach(g=>{(g.players||[]).forEach((side,si)=>side.forEach(p=>{if(!m[p])m[p]={g:0,w:0,pts:0};m[p].g++;if(g.winner===si)m[p].w++;m[p].pts+=g.scores[si]}))});return Object.entries(m).map(([p,x])=>({p,...x,rate:x.g?x.w/x.g*100:0,avg:x.g?x.pts/x.g:0})).sort((a,b)=>b.rate-a.rate)}
+function renderStats(view){let el=document.getElementById("statsMain"),all=getArchive();let matches=view==="h2h"?all:all.filter(g=>statsFilter==="all"||g.mode===statsFilter);if(view==="h2h"){el.innerHTML=`<div class="card"><h3>⚔️ Testa a testa</h3><div class="grid"><div>${ps("h2ha")}</div><div>${ps("h2hb")}</div></div><button class="btn primary" style="margin-top:10px" onclick="h2h()">Confronta</button><div id="h2hr" style="margin-top:12px"></div></div>`;return}if(!matches.length){el.innerHTML='<div class="card muted">Nessuna partita conclusa con questo filtro.</div>';return}let rows=playerStats(matches);el.innerHTML=`<div class="card"><h3>Classifica giocatori</h3>${rows.map(x=>`<div class="player-card" style="margin:8px 0"><strong>${esc(x.p)}</strong><div class="stat-grid" style="margin-top:8px"><div class="stat"><div class="v">${x.g}</div><div class="l">Partite</div></div><div class="stat"><div class="v">${x.w}</div><div class="l">Vittorie</div></div><div class="stat"><div class="v">${x.rate.toFixed(1)}%</div><div class="l">Win rate</div></div><div class="stat"><div class="v">${Math.round(x.avg)}</div><div class="l">Punti medi</div></div></div></div>`).join("")}</div>`}
+function h2h(){let a=document.getElementById("h2ha").value,b=document.getElementById("h2hb").value;if(!a||!b||a===b)return;let games=0,aw=0,bw=0,partners=0;getArchive().forEach(g=>{let p0=g.players?.[0]||[],p1=g.players?.[1]||[];let sa=p0.includes(a)?0:p1.includes(a)?1:-1,sb=p0.includes(b)?0:p1.includes(b)?1:-1;if(sa<0||sb<0)return;games++;if(g.winner===sa)aw++;if(g.winner===sb)bw++;if(sa===sb)partners++});document.getElementById("h2hr").innerHTML=`<div class="matchup"><div class="vsbox"><strong>${esc(a)}</strong><div class="winner-score" style="font-size:34px">${aw}</div><div class="muted">vittorie</div></div><div class="vsbox"><strong>${esc(b)}</strong><div class="winner-score" style="font-size:34px">${bw}</div><div class="muted">vittorie</div></div></div><div class="muted" style="margin-top:10px">Partite condivise: ${games} · Compagni di squadra: ${partners}</div>`}
+
 function load(){
+ loadExtra();
  try{
   const saved=JSON.parse(localStorage.getItem(STORAGE));
   if(saved) game=saved;
@@ -388,16 +433,7 @@ function newGame(){
 function fmt(n){return Number(n).toLocaleString("it-IT")}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
 
-load();
+load();renderPlayers();
 </script>
-
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
-  });
-}
-</script>
-
 </body>
 </html>
