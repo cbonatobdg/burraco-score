@@ -58,7 +58,7 @@ label.small{font-size:12px;color:#687384;display:block;margin-bottom:5px}
 <style>
 .navbar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}.navbtn{border:1px solid #dfe3e8;background:#fff;border-radius:11px;padding:11px;font-weight:800;cursor:pointer}.navbtn.active{background:#111827;color:#fff}.page{display:none}.page.active{display:block}.player-list{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.player-card{background:#f7f8fa;border-radius:12px;padding:13px}.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.stat{background:#f7f8fa;border-radius:12px;padding:12px;text-align:center}.stat .v{font-size:25px;font-weight:900}.stat .l{font-size:11px;color:#687384}.select{width:100%;padding:11px;border:1px solid #d9dee5;border-radius:10px;font-size:16px;background:#fff}.mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mode-toggle button{padding:11px;border:1px solid #d9dee5;background:#fff;border-radius:10px;font-weight:800}.mode-toggle button.active{background:#2457d6;color:#fff}@media(max-width:650px){.player-list{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,1fr)}}
 <style>
-#gameSetup .mode-toggle button.active{background:#2457d6;color:#fff}
+#gameSetup .mode-toggle{position:relative;z-index:5}#gameSetup .mode-toggle button{position:relative;z-index:6;pointer-events:auto;cursor:pointer}#gameSetup .mode-toggle button.active{background:#2457d6;color:#fff}
 .stat-table{width:100%;border-collapse:collapse}.stat-table th,.stat-table td{padding:9px 6px;border-bottom:1px solid #edf0f3;text-align:left}.stat-table th{font-size:12px;color:#687384}.stat-table th:not(:first-child),.stat-table td:not(:first-child){text-align:right}
 .stats-card{background:#fff;border:1px solid #e0e4e9;border-radius:16px;padding:16px;margin-bottom:14px}
 </style></style>
@@ -229,7 +229,7 @@ function newGame(){
 function fmt(n){return Number(n).toLocaleString("it-IT")}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
 
-load();renderPlayers();chooseStartMode('pairs');
+load();renderPlayers();document.getElementById('gameSetup').style.display='block';chooseStartMode('pairs');
 </script>
 </body>
 </html>
