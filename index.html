@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101828">
-<title>Burraco Score</title>
+<title>Burraco Score v0.9.5</title>
 <style>
 :root{--bg:#f3f5f8;--card:#fff;--ink:#172033;--muted:#687386;--line:#dfe4ea;--accent:#2457d6;--accent2:#102a72;--green:#16804a;--red:#b8324f}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -39,11 +39,33 @@ user-select:none;-webkit-user-select:none;
 @media(max-width:560px){
 .counter-value{height:36px;min-width:40px;font-size:17px}
 }
+
+#cloudLogin{position:fixed;inset:0;background:rgba(243,245,248,.97);z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px}
+#cloudLogin .login-card{width:min(430px,100%);background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 8px 30px #17203318}
+#cloudLogin h2{margin-bottom:5px}
+#cloudLogin .login-status{margin-top:12px;padding:10px;border-radius:10px;background:#f7f8fb;color:var(--muted);font-size:12px;white-space:pre-wrap}
+#cloudLogin .login-status.error{background:#f8e7eb;color:#a52642}
+#cloudLogin .login-status.success{background:#e8f6ee;color:#166a40}
+#cloudLogout{margin-top:6px;font-size:10px;padding:5px 8px;border:0;border-radius:999px;background:#e7ebf1;color:#273246;cursor:pointer}
+#cloudSaveStatus.success{color:var(--green);font-weight:800}#cloudSaveStatus.error{color:var(--red);font-weight:800}
 </style>
 </head>
 <body>
+<div id="cloudLogin">
+  <div class="login-card">
+    <div class="muted">☁️ SINCRONIZZAZIONE CLOUD</div>
+    <h2>Accedi a Burraco Score</h2>
+    <div class="muted">Usa l'account Supabase creato per il tuo gruppo. Le partite continuano a essere salvate localmente e, quando una partita termina, vengono sincronizzate anche nel cloud.</div>
+    <div class="field" style="margin-top:16px"><label>Email</label><input id="cloudEmail" type="email" autocomplete="username" placeholder="La tua email"></div>
+    <div class="field"><label>Password</label><input id="cloudPassword" type="password" autocomplete="current-password" placeholder="La password Supabase"></div>
+    <button id="cloudLoginBtn" class="btn primary full">ACCEDI</button>
+    <button id="cloudLogout" class="hidden">Esci</button>
+    <div id="cloudLoginStatus" class="login-status">Connessione al servizio cloud...</div>
+  </div>
+</div>
+
 <div class="app">
-<header><div class="brand">🃏 Burraco Score</div><div class="sub">Segnapunti · statistiche · momentum</div></header>
+<header><div class="row"><div><div class="brand">🃏 Burraco Score</div><div class="sub">Segnapunti · statistiche · momentum</div></div><div id="cloudBadge" class="pill">☁️ Offline</div></div></header>
 
 <nav>
 <button id="tabGame" class="active" onclick="showTab('game')">Partita</button>
@@ -188,7 +210,7 @@ function changeC(s,k,d){
 }
 function closeHand(){document.getElementById("handOverlay").classList.add("hidden")}
 function saveHand(){
- const totals=[0,0],summary=[];
+ const totals=[0,0],summary=[],details=[];
  for(let s=0;s<2;s++){
   const get=k=>Number(document.getElementById("c"+s+k).textContent||0);
   const card=get("jolly")*30+get("pinella")*20+get("asso")*15+get("figura")*10+get("bassa")*5;
@@ -197,6 +219,11 @@ function saveHand(){
   const pozz=document.getElementById("pozz"+s).value==="yes";
   totals[s]=card+burr+(close?100:0)-(pozz?100:0);
   summary.push("Carte "+card+" · Burrachi "+burr+(close?" · Chiusura":"")+(pozz?" · Pozzetto -100":""));
+  details.push({
+   jolly:get("jolly"),pinella:get("pinella"),asso:get("asso"),figure:get("figura"),
+   low:get("bassa"),burraco_clean:get("clean"),burraco_semi:get("semi"),
+   burraco_dirty:get("dirty"),closing:close,pozzetto:pozz,total:totals[s]
+  });
  }
  const close0=document.getElementById("close0").value==="yes";
  const close1=document.getElementById("close1").value==="yes";
@@ -204,12 +231,17 @@ function saveHand(){
   alert(close0 ? "Solo una delle due parti può chiudere la mano." : "Devi indicare una chiusura (+100) per una delle due parti.");
   return;
  }
+ const handIndex=current.hands.length;
+ const starterPlayer=current.mode==="single"
+   ? current.players[current.turnOrder[handIndex%2]][0]
+   : (handIndex%4===0?current.players[0][0]:handIndex%4===1?current.players[1][0]:handIndex%4===2?current.players[0][1]:current.players[1][1]);
  current.scores[0]+=totals[0];current.scores[1]+=totals[1];
- current.hands.push({points:totals,summary});
+ current.hands.push({points:totals,summary,details,starter:starterPlayer});
  closeHand();renderGame();
  if(current.scores[0]>=TARGET||current.scores[1]>=TARGET){
   current.winner=current.scores[0]===current.scores[1]?-1:(current.scores[0]>current.scores[1]?0:1);
   matches.unshift(JSON.parse(JSON.stringify(current)));save();showFinal();
+  if(window.burracoCloudSaveGame){ window.burracoCloudSaveGame(current); }
  }
 }
 function showHandError(s){const e=document.getElementById("handError");e.textContent=s;e.classList.remove("hidden");}
@@ -238,7 +270,7 @@ function renderGame(){
 }
 function showFinal(){
  const winner=current.winner<0?"Pareggio":names(current.winner);
- document.getElementById("gameCard").innerHTML='<div class="card final"><div class="muted">PARTITA CONCLUSA</div><div class="winner">🏆 '+esc(winner)+'</div><div class="score" style="margin:8px 0">'+current.scores[0]+' — '+current.scores[1]+'</div><div class="muted">'+current.hands.length+' mani giocate</div><button class="btn primary full" onclick="newGame()">NUOVA PARTITA</button></div>';
+ document.getElementById("gameCard").innerHTML='<div class="card final"><div class="muted">PARTITA CONCLUSA</div><div class="winner">🏆 '+esc(winner)+'</div><div class="score" style="margin:8px 0">'+current.scores[0]+' — '+current.scores[1]+'</div><div class="muted">'+current.hands.length+' mani giocate</div><div id="cloudSaveStatus" class="muted" style="margin-top:10px">☁️ Sincronizzazione in corso...</div><button class="btn primary full" onclick="newGame()">NUOVA PARTITA</button></div>';
 }
 function newGame(){current=null;document.getElementById("gameCard").classList.add("hidden");document.getElementById("setupCard").classList.remove("hidden");renderSetup();}
 function abandonGame(){
@@ -276,6 +308,219 @@ function renderStats(){
  document.getElementById("generalStats").innerHTML='<div class="detailgrid"><div class="stat"><strong>'+games+'</strong><span>PARTITE CONCLUSE</span></div><div class="stat"><strong>'+players.length+'</strong><span>GIOCATORI</span></div></div><div class="section-title">🏆 Classifica</div>'+top.map((x,i)=>'<div class="row" style="padding:8px 0;border-bottom:1px solid #edf0f3"><strong>'+(i+1)+'. '+esc(x[0])+'</strong><span>'+((x[1].w/x[1].g*100)||0).toFixed(1)+'%</span></div>').join("");
 }
 renderSetup();renderPlayers();renderHistory();renderStats();
+</script>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const SUPABASE_URL = "https://ovbhpwawmcpzvbqpomku.supabase.co";
+
+/*
+ * Inserisci qui la Publishable key di Supabase.
+ * Non inserire mai la Secret key / service_role.
+ */
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_t81s9CjnFwInRGcbOo1gug_CQpngRN5";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+window.burracoSupabase = supabase;
+
+const loginOverlay=document.getElementById("cloudLogin");
+const loginBtn=document.getElementById("cloudLoginBtn");
+const emailEl=document.getElementById("cloudEmail");
+const passwordEl=document.getElementById("cloudPassword");
+const statusEl=document.getElementById("cloudLoginStatus");
+const badge=document.getElementById("cloudBadge");
+
+function cloudStatus(text,type=""){
+  statusEl.textContent=text;
+  statusEl.className="login-status"+(type?" "+type:"");
+}
+
+function setBadge(text){
+  if(badge)badge.textContent=text;
+}
+
+function setAuthenticated(user){
+  loginOverlay.classList.add("hidden");
+  setBadge("☁️ Sincronizzato");
+  if(user) localStorage.setItem("bs_cloud_email",user.email||"");
+}
+
+async function checkSession(){
+  const {data,error}=await supabase.auth.getSession();
+  if(error){
+    cloudStatus("Errore di connessione:\n"+error.message,"error");
+    setBadge("☁️ Errore");
+    return;
+  }
+  if(data.session){
+    setAuthenticated(data.session.user);
+    return;
+  }
+  setBadge("☁️ Login");
+  cloudStatus("Accedi con il tuo account Supabase.");
+}
+
+loginBtn.addEventListener("click",async()=>{
+  const email=emailEl.value.trim();
+  const password=passwordEl.value;
+  if(!email||!password){
+    cloudStatus("Inserisci email e password.","error");
+    return;
+  }
+  loginBtn.disabled=true;
+  loginBtn.textContent="ACCESSO...";
+  cloudStatus("Accesso in corso...");
+  const {data,error}=await supabase.auth.signInWithPassword({email,password});
+  loginBtn.disabled=false;
+  loginBtn.textContent="ACCEDI";
+  if(error){
+    cloudStatus("ERRORE LOGIN\n"+error.message,"error");
+    setBadge("☁️ Errore");
+    return;
+  }
+  setAuthenticated(data.user);
+  cloudStatus("Accesso riuscito.","success");
+});
+
+supabase.auth.onAuthStateChange((_event,session)=>{
+  if(session) setAuthenticated(session.user);
+  else{
+    loginOverlay.classList.remove("hidden");
+    setBadge("☁️ Login");
+  }
+});
+
+checkSession();
+</script>
+<script type="module">
+const supabase=window.burracoSupabase;
+
+async function getCloudGroupId(){
+  const {data:{user},error:userError}=await supabase.auth.getUser();
+  if(userError||!user) throw userError||new Error("Utente non autenticato");
+  const {data,error}=await supabase.from("group_members").select("group_id").eq("user_id",user.id).limit(1);
+  if(error) throw error;
+  if(!data?.length) throw new Error("Nessun gruppo associato all'utente.");
+  return data[0].group_id;
+}
+
+async function ensureCloudPlayer(groupId,name){
+  const {data:links,error:linksError}=await supabase.from("group_players").select("player_id").eq("group_id",groupId);
+  if(linksError) throw linksError;
+  const ids=(links||[]).map(x=>x.player_id);
+  if(ids.length){
+    const {data:found,error:foundError}=await supabase.from("players").select("id,name").in("id",ids).eq("name",name).limit(1);
+    if(foundError) throw foundError;
+    if(found?.length) return found[0].id;
+  }
+  const {data:created,error:createdError}=await supabase.rpc("create_group_player",{p_group_id:groupId,p_name:name});
+  if(createdError) throw createdError;
+  return created.id;
+}
+
+async function insertCloudGame(current){
+  const groupId=await getCloudGroupId();
+  const playerIds={};
+  const flat=[];
+  current.players.forEach((team,teamIndex)=>team.forEach((name,pos)=>{
+    flat.push({
+      name,
+      team:teamIndex+1,
+      position:current.mode==="single"
+        ? (teamIndex===0?"A":"B")
+        : (teamIndex===0?(pos===0?"A":"B"):(pos===0?"C":"D"))
+    });
+  }));
+  for(const item of flat){ playerIds[item.name]=await ensureCloudPlayer(groupId,item.name); }
+
+  const gameInsert=await supabase.from("games").insert({
+    group_id:groupId,
+    mode:current.mode,
+    winner_team:current.winner<0?null:current.winner+1,
+    final_score_1:current.scores[0],
+    final_score_2:current.scores[1],
+    status:"finished"
+  }).select("id").single();
+  if(gameInsert.error) throw gameInsert.error;
+  const gameId=gameInsert.data.id;
+
+  try{
+    const gpRows=flat.map(item=>({
+      game_id:gameId,
+      player_id:playerIds[item.name],
+      team:item.team,
+      position:item.position
+    }));
+    const gp=await supabase.from("game_players").insert(gpRows);
+    if(gp.error) throw gp.error;
+
+    for(let i=0;i<current.hands.length;i++){
+      const h=current.hands[i];
+      const handInsert=await supabase.from("hands").insert({
+        game_id:gameId,
+        hand_number:i+1,
+        starter_player_id:playerIds[h.starter]
+      }).select("id").single();
+      if(handInsert.error) throw handInsert.error;
+      const handId=handInsert.data.id;
+
+      const rows=[0,1].map(team=>{
+        const d=h.details?.[team]||{};
+        return {
+          hand_id:handId,
+          team:team+1,
+          jolly:d.jolly||0,
+          pinella:d.pinella||0,
+          asso:d.asso||0,
+          figure:d.figure||0,
+          low_cards:d.low||0,
+          burraco_clean:d.burraco_clean||0,
+          burraco_semi:d.burraco_semi||0,
+          burraco_dirty:d.burraco_dirty||0,
+          closing:!!d.closing,
+          total:h.points[team]||0
+        };
+      });
+      const hs=await supabase.from("hand_scores").insert(rows);
+      if(hs.error) throw hs.error;
+    }
+  }catch(err){
+    await supabase.from("games").delete().eq("id",gameId);
+    throw err;
+  }
+  return gameId;
+}
+
+window.burracoCloudSaveGame=async function(game){
+  const status=document.getElementById("cloudSaveStatus");
+  if(status){status.textContent="☁️ Salvataggio cloud in corso...";status.className="muted";}
+  try{
+    if(!supabase) throw new Error("Client Supabase non disponibile.");
+    const {data:{session}}=await supabase.auth.getSession();
+    if(!session) throw new Error("Sessione cloud non attiva.");
+    if(game.cloudGameId){
+      if(status){status.textContent="☁️ Già sincronizzata";status.className="muted success";}
+      return game.cloudGameId;
+    }
+    const gameId=await insertCloudGame(game);
+    game.cloudGameId=gameId;
+    const localMatches=JSON.parse(localStorage.getItem("bs_matches")||"[]");
+    const localIndex=localMatches.findIndex(x=>x.id===game.id);
+    if(localIndex>=0){
+      localMatches[localIndex].cloudGameId=gameId;
+      localStorage.setItem("bs_matches",JSON.stringify(localMatches));
+    }
+    if(status){status.textContent="☁️ Sincronizzata";status.className="muted success";}
+    const badge=document.getElementById("cloudBadge");
+    if(badge)badge.textContent="☁️ Sincronizzato";
+    return gameId;
+  }catch(err){
+    if(status){status.textContent="⚠️ Salvata localmente · cloud non disponibile";status.className="muted error";}
+    console.error("Burraco Score cloud save error",err);
+    return null;
+  }
+};
 </script>
 </body>
 </html>
