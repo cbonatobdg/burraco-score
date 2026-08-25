@@ -28,6 +28,17 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 .history-item{cursor:pointer}.history-item:hover{background:#f7f8fb}.result{font-size:22px;font-weight:950}.pill{font-size:10px;font-weight:900;padding:4px 7px;border-radius:999px;background:#e9edf4}
 .final{border:2px solid var(--accent);text-align:center}.final .winner{font-size:24px;font-weight:950}.danger-note{color:var(--red);font-size:12px;font-weight:800;margin-top:7px}
 @media(max-width:560px){.app{padding:9px 9px 30px}.grid{grid-template-columns:1fr}.score{font-size:32px}.nav button{font-size:11px;padding:10px 5px}.card{padding:13px}.handrow{grid-template-columns:minmax(0,1fr) 30px 40px 30px}.handrow>span{font-size:11px}.counter button{width:30px}}
+@media(max-width:560px){#pagePlayers .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;width:100%}#pagePlayers #newPlayer{min-width:0;width:100%}#pagePlayers .row .btn{min-width:82px;padding-left:10px;padding-right:10px}}
+.counter-value{
+display:flex;align-items:center;justify-content:center;
+height:36px;min-width:40px;
+font-size:17px;font-weight:950;line-height:1;
+color:#172033;
+user-select:none;-webkit-user-select:none;
+}
+@media(max-width:560px){
+.counter-value{height:36px;min-width:40px;font-size:17px}
+}
 </style>
 </head>
 <body>
@@ -62,19 +73,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 
 <div id="handCard" class="card">
 <h3>Nuova mano</h3>
-<div class="muted">Inserisci il numero di carte per tipo. Il punteggio viene calcolato automaticamente.</div>
-<div id="handFields" style="margin-top:8px"></div>
-<div class="grid" style="margin-top:10px">
-<div class="field"><label>BURRACHI COPPIA 1</label><input id="burA" type="number" min="0" value="0"></div>
-<div class="field"><label>BURRACHI COPPIA 2</label><input id="burB" type="number" min="0" value="0"></div>
-</div>
-<div class="grid" style="margin-top:10px">
-<div class="field"><label>CHIUSURA</label><select id="closeTeam"><option value="">Nessuna</option><option value="0">Coppia 1</option><option value="1">Coppia 2</option></select></div>
-<div class="field"><label>POZZETTO NON PRESO</label><select id="pozzetto"><option value="">Nessuno</option><option value="0">Coppia 1</option><option value="1">Coppia 2</option></select></div>
-</div>
-<div id="handError" class="danger-note hidden"></div>
-<button class="btn primary full" onclick="saveHand()">SALVA MANO</button>
-<button class="btn secondary full" onclick="abandonGame()">ABBANDONA PARTITA</button>
+<div class="muted">Inserisci i punteggi della mano e conferma la chiusura.</div>
+<button class="btn primary full" onclick="openHand()">INSERISCI PUNTEGGI MANO</button>
 </div>
 </div>
 </section>
@@ -96,6 +96,11 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;p
 </section>
 </div>
 
+<div id="handOverlay" class="overlay hidden"><div class="modal">
+<div class="row"><h2>Nuova mano</h2><button class="btn secondary" onclick="closeHand()">Chiudi</button></div>
+<div id="handForm"></div>
+<button class="btn primary full" onclick="saveHand()" style="margin-top:14px">SALVA MANO</button>
+</div></div>
 <script>
 "use strict";
 const TARGET=2005;
@@ -142,43 +147,51 @@ function startGame(){
  document.getElementById("setupCard").classList.add("hidden");document.getElementById("gameCard").classList.remove("hidden");
  renderGame();resetHand();
 }
-function resetHand(){
- document.getElementById("handFields").innerHTML=CARD_TYPES.map(c=>'<div class="handrow"><span>'+c.label+'</span><button onclick="changeCard(\''+c.key+'\',-1)">−</button><input id="c_'+c.key+'" type="number" min="0" value="0"><button onclick="changeCard(\''+c.key+'\',1)">+</button></div>').join("");
- document.getElementById("burA").value=0;document.getElementById("burB").value=0;document.getElementById("closeTeam").value="";document.getElementById("pozzetto").value="";document.getElementById("handError").classList.add("hidden");
+function openHand(){
+ let f="";
+ for(let s=0;s<2;s++){
+  f+='<div class="card" style="box-shadow:none;border:1px solid #e5e8ed"><h3>'+esc(current.players[s].join(" & "))+'</h3>';
+  [["jolly","Jolly · 30"],["pinella","Pinella · 20"],["asso","Asso · 15"],["figura","K / Q / J / >8 · 10"],["bassa","7-3 · 5"]].forEach(([k,l])=>{
+   f+='<div class="handrow"><span>'+l+'</span><button onclick="changeC('+s+',\''+k+'\',-1)">−</button><span id="c'+s+k+'" class="counter-value">0</span><button onclick="changeC('+s+',\''+k+'\',1)">+</button></div>';
+  });
+  f+='<div class="section-title">Burrachi</div>';
+  [["clean","Pulito · 200"],["semi","Semipulito · 150"],["dirty","Sporco · 100"]].forEach(([k,l])=>{
+   f+='<div class="handrow"><span>'+l+'</span><button onclick="changeC('+s+',\''+k+'\',-1)">−</button><span id="c'+s+k+'" class="counter-value">0</span><button onclick="changeC('+s+',\''+k+'\',1)">+</button></div>';
+  });
+  f+='<div class="field" style="margin-top:12px"><label>Chiusura</label><select id="close'+s+'"><option value="no">No</option><option value="yes">Sì (+100)</option></select></div>';
+  f+='<div class="field"><label>Pozzetto non preso</label><select id="pozz'+s+'"><option value="no">No</option><option value="yes">Sì (-100)</option></select></div>';
+  f+='</div>';
+ }
+ document.getElementById("handForm").innerHTML=f;
+ document.getElementById("handOverlay").classList.remove("hidden");
 }
-function changeCard(k,d){const x=document.getElementById("c_"+k),n=Math.max(0,(+x.value||0)+d);x.value=n;}
-function calcHand(team){
- return CARD_TYPES.reduce((sum,c)=>sum+(+(document.getElementById("c_"+c.key).value)||0)*c.value,0);
+function changeC(s,k,d){
+ const e=document.getElementById("c"+s+k);
+ const n=Math.max(0,Number(e.textContent||0)+d);
+ e.textContent=n;
 }
+function closeHand(){document.getElementById("handOverlay").classList.add("hidden")}
 function saveHand(){
- const close=document.getElementById("closeTeam").value,pozz=document.getElementById("pozzetto").value;
- if(close===""){showHandError("Per salvare la mano devi indicare una chiusura in una delle due squadre.");return;}
- if(pozz!=="" && pozz===close){showHandError("La stessa squadra non può avere contemporaneamente chiusura e mancata presa del pozzetto.");return;}
- let a=calcHand(0),b=calcHand(1);
- const ba=+document.getElementById("burA").value||0,bb=+document.getElementById("burB").value||0;
- const bonus=[0,0];
- function burracoPoints(n){return n>=1?0:0}
- // User-defined burraco values: clean 200, semi 150, dirty 100.
- // Since only a burraco count is entered here, use a separate prompt-style chooser below.
- // Keep this simple and explicit: one can enter total burraco points for each side.
- // The visible inputs remain counts; each burraco is selected by the new detail buttons.
- a+=0;b+=0;
- const closePts=100, pozzPts=-100;
- if(close==="0")bonus[0]+=closePts; else bonus[1]+=closePts;
- if(pozz==="0")bonus[0]+=pozzPts; else if(pozz==="1")bonus[1]+=pozzPts;
- a+=bonus[0];b+=bonus[1];
- // For backward-compatible simple input, burraco count is treated as 100 each;
- // detailed type selection is provided in the hand summary editor below in v1.
- a+=ba*100;b+=bb*100;
- const points=[a,b];
- current.scores[0]+=a;current.scores[1]+=b;
- const summary={cards:[...CARD_TYPES.map(c=>({key:c.key,count:+document.getElementById("c_"+c.key).value||0}))],burraco:[ba,bb],close:+close,pozz:pozz===""?null:+pozz};
- current.hands.push({points,summary});
- renderGame();
+ const totals=[0,0],summary=[];
+ for(let s=0;s<2;s++){
+  const get=k=>Number(document.getElementById("c"+s+k).textContent||0);
+  const card=get("jolly")*30+get("pinella")*20+get("asso")*15+get("figura")*10+get("bassa")*5;
+  const burr=get("clean")*200+get("semi")*150+get("dirty")*100;
+  const close=document.getElementById("close"+s).value==="yes";
+  const pozz=document.getElementById("pozz"+s).value==="yes";
+  totals[s]=card+burr+(close?100:0)-(pozz?100:0);
+  summary.push("Carte "+card+" · Burrachi "+burr+(close?" · Chiusura":"")+(pozz?" · Pozzetto -100":""));
+ }
+ if(document.getElementById("close0").value!=="yes"&&document.getElementById("close1").value!=="yes"){
+  alert("Devi indicare una chiusura per una delle due parti.");return;
+ }
+ current.scores[0]+=totals[0];current.scores[1]+=totals[1];
+ current.hands.push({points:totals,summary});
+ closeHand();renderGame();
  if(current.scores[0]>=TARGET||current.scores[1]>=TARGET){
-  current.winner=current.scores[0]>=TARGET&&current.scores[1]>=TARGET?(current.scores[0]>current.scores[1]?0:1):(current.scores[0]>=TARGET?0:1);
+  current.winner=current.scores[0]===current.scores[1]?-1:(current.scores[0]>current.scores[1]?0:1);
   matches.unshift(JSON.parse(JSON.stringify(current)));save();showFinal();
- }else resetHand();
+ }
 }
 function showHandError(s){const e=document.getElementById("handError");e.textContent=s;e.classList.remove("hidden");}
 function names(side){return current.players[side].join(" & ");}
@@ -205,7 +218,8 @@ function renderGame(){
  const a=m.p,b=100-a;box.innerHTML='<div class="row"><strong>MOMENTUM</strong><strong>'+a+'% — '+b+'%</strong></div><div class="bar" style="margin-top:7px"><div class="barA" style="width:'+a+'%"></div><div class="barB" style="width:'+b+'%"></div></div><div class="proj"><div><strong>'+m.proj[0]+'</strong><small>'+esc(names(0))+'</small></div><div><strong>'+m.proj[1]+'</strong><small>'+esc(names(1))+'</small></div></div><div class="muted" style="text-align:center;margin-top:7px">Stima mani alla soglia: '+(isFinite(m.hands[0])?Math.max(1,Math.ceil(m.hands[0])):"—")+' / '+(isFinite(m.hands[1])?Math.max(1,Math.ceil(m.hands[1])):"—")+'</div>';
 }
 function showFinal(){
- document.getElementById("gameCard").innerHTML='<div class="card final"><div class="muted">PARTITA CONCLUSA</div><div class="winner">🏆 '+esc(names(current.winner))+'</div><div class="score" style="margin:8px 0">'+current.scores[0]+' — '+current.scores[1]+'</div><div class="muted">'+current.hands.length+' mani giocate</div><button class="btn primary full" onclick="newGame()">NUOVA PARTITA</button></div>';
+ const winner=current.winner<0?"Pareggio":names(current.winner);
+ document.getElementById("gameCard").innerHTML='<div class="card final"><div class="muted">PARTITA CONCLUSA</div><div class="winner">🏆 '+esc(winner)+'</div><div class="score" style="margin:8px 0">'+current.scores[0]+' — '+current.scores[1]+'</div><div class="muted">'+current.hands.length+' mani giocate</div><button class="btn primary full" onclick="newGame()">NUOVA PARTITA</button></div>';
 }
 function newGame(){current=null;document.getElementById("gameCard").classList.add("hidden");document.getElementById("setupCard").classList.remove("hidden");renderSetup();}
 function abandonGame(){if(confirm("Abbandonare la partita corrente?")){current=null;document.getElementById("gameCard").classList.add("hidden");document.getElementById("setupCard").classList.remove("hidden");renderSetup();}}
