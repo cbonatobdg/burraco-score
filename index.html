@@ -71,6 +71,7 @@ user-select:none;-webkit-user-select:none;
 <div id="momentum" class="momentum hidden"></div>
 </div>
 
+<button class="btn danger full" onclick="abandonGame()" style="margin-bottom:10px">✕ CHIUDI / ANNULLA PARTITA</button>
 <div id="handCard" class="card">
 <h3>Nuova mano</h3>
 <div class="muted">Inserisci i punteggi della mano e conferma la chiusura.</div>
@@ -129,9 +130,9 @@ function renderSetup(){
  const f=document.getElementById("setupFields");
  if(players.length<(mode==="single"?2:4)){f.innerHTML='<div class="danger-note">Servono almeno '+(mode==="single"?2:4)+' giocatori. Aggiungili nella tab Giocatori.</div>';return;}
  if(mode==="single"){
-  f.innerHTML='<div class="grid"><div class="field"><label>GIOCATORE 1</label>'+selectHTML("p0","",[])+'</div><div class="field"><label>GIOCATORE 2</label>'+selectHTML("p1","",[])+'</div></div>';
+  f.innerHTML='<div class="grid"><div class="field"><label>GIOCATORE 1</label>'+selectHTML("p0","",[])+'</div><div class="field"><label>GIOCATORE 2</label>'+selectHTML("p1","",[])+'</div></div><div class="field" style="margin-top:10px"><label>CHI INIZIA LA PRIMA MANO?</label><select id="starter"><option value="0">Giocatore 1</option><option value="1">Giocatore 2</option></select></div>';
  }else{
-  f.innerHTML='<div class="grid"><div class="field"><label>COPPIA 1 · GIOCATORE 1</label>'+selectHTML("p0","",[])+'</div><div class="field"><label>COPPIA 1 · GIOCATORE 2</label>'+selectHTML("p1","",[])+'</div><div class="field"><label>COPPIA 2 · GIOCATORE 1</label>'+selectHTML("p2","",[])+'</div><div class="field"><label>COPPIA 2 · GIOCATORE 2</label>'+selectHTML("p3","",[])+'</div></div>';
+  f.innerHTML='<div class="grid"><div class="field"><label>COPPIA 1 · GIOCATORE A</label>'+selectHTML("p0","",[])+'</div><div class="field"><label>COPPIA 1 · GIOCATORE B</label>'+selectHTML("p1","",[])+'</div><div class="field"><label>COPPIA 2 · GIOCATORE C</label>'+selectHTML("p2","",[])+'</div><div class="field"><label>COPPIA 2 · GIOCATORE D</label>'+selectHTML("p3","",[])+'</div></div><div class="field" style="margin-top:10px"><label>CHI INIZIA LA PRIMA MANO?</label><select id="starter"><option value="0">Coppia 1 · A</option><option value="2">Coppia 2 · C</option></select><div class="muted" style="margin-top:4px">Il giro seguirà automaticamente A → C → B → D.</div></div>';
  }
  ["p0","p1","p2","p3"].slice(0,mode==="single"?2:4).forEach(id=>document.getElementById(id)?.addEventListener("change",updateSelectors));
 }
@@ -143,12 +144,19 @@ function startGame(){
  const ids=mode==="single"?["p0","p1"]:["p0","p1","p2","p3"],v=ids.map(id=>document.getElementById(id)?.value||"");
  if(v.some(x=>!x)){alert("Seleziona tutti i giocatori.");return;}
  if(new Set(v).size!==v.length){alert("Ogni giocatore può comparire una sola volta.");return;}
- current={id:Date.now(),date:new Date().toISOString(),mode,players:mode==="single"?[[v[0]],[v[1]]]:[[v[0],v[1]],[v[2],v[3]]],scores:[0,0],hands:[],winner:null};
+ const starter=Number(document.getElementById("starter")?.value||0);
+const turnOrder=mode==="single"?(starter===0?[0,1]:[1,0]):(starter===0?[0,1,1,0]:[0,1,1,0]);
+current={id:Date.now(),date:new Date().toISOString(),mode,players:mode==="single"?[[v[0]],[v[1]]]:[[v[0],v[1]],[v[2],v[3]]],scores:[0,0],hands:[],winner:null,starter:starter,turnOrder:turnOrder};
  document.getElementById("setupCard").classList.add("hidden");document.getElementById("gameCard").classList.remove("hidden");
  renderGame();resetHand();
 }
 function openHand(){
  let f="";
+ const handIndex=current.hands.length;
+ const starterPlayer=current.mode==="single"
+   ? current.players[current.turnOrder[handIndex%2]][0]
+   : (handIndex%4===0?current.players[0][0]:handIndex%4===1?current.players[1][0]:handIndex%4===2?current.players[0][1]:current.players[1][1]);
+ f+='<div class="momentum" style="margin-bottom:10px"><strong>🃏 Mano '+(handIndex+1)+' · Inizia '+esc(starterPlayer)+'</strong></div>';
  for(let s=0;s<2;s++){
   f+='<div class="card" style="box-shadow:none;border:1px solid #e5e8ed"><h3>'+esc(current.players[s].join(" & "))+'</h3>';
   [["jolly","Jolly · 30"],["pinella","Pinella · 20"],["asso","Asso · 15"],["figura","K / Q / J / >8 · 10"],["bassa","7-3 · 5"]].forEach(([k,l])=>{
@@ -163,6 +171,14 @@ function openHand(){
   f+='</div>';
  }
  document.getElementById("handForm").innerHTML=f;
+ [0,1].forEach(function(s){
+   document.getElementById("close"+s).addEventListener("change",function(){
+     if(this.value==="yes"){
+       const other=document.getElementById("close"+(s===0?1:0));
+       other.value="no";
+     }
+   });
+ });
  document.getElementById("handOverlay").classList.remove("hidden");
 }
 function changeC(s,k,d){
@@ -182,8 +198,11 @@ function saveHand(){
   totals[s]=card+burr+(close?100:0)-(pozz?100:0);
   summary.push("Carte "+card+" · Burrachi "+burr+(close?" · Chiusura":"")+(pozz?" · Pozzetto -100":""));
  }
- if(document.getElementById("close0").value!=="yes"&&document.getElementById("close1").value!=="yes"){
-  alert("Devi indicare una chiusura per una delle due parti.");return;
+ const close0=document.getElementById("close0").value==="yes";
+ const close1=document.getElementById("close1").value==="yes";
+ if(close0===close1){
+  alert(close0 ? "Solo una delle due parti può chiudere la mano." : "Devi indicare una chiusura (+100) per una delle due parti.");
+  return;
  }
  current.scores[0]+=totals[0];current.scores[1]+=totals[1];
  current.hands.push({points:totals,summary});
@@ -222,11 +241,14 @@ function showFinal(){
  document.getElementById("gameCard").innerHTML='<div class="card final"><div class="muted">PARTITA CONCLUSA</div><div class="winner">🏆 '+esc(winner)+'</div><div class="score" style="margin:8px 0">'+current.scores[0]+' — '+current.scores[1]+'</div><div class="muted">'+current.hands.length+' mani giocate</div><button class="btn primary full" onclick="newGame()">NUOVA PARTITA</button></div>';
 }
 function newGame(){current=null;document.getElementById("gameCard").classList.add("hidden");document.getElementById("setupCard").classList.remove("hidden");renderSetup();}
-function abandonGame(){if(confirm("Abbandonare la partita corrente?")){current=null;document.getElementById("gameCard").classList.add("hidden");document.getElementById("setupCard").classList.remove("hidden");renderSetup();}}
-function addPlayer(){
- const input=document.getElementById("newPlayer"),name=input.value.trim();if(!name)return;
- if(players.some(p=>p.toLowerCase()===name.toLowerCase())){alert("Questo giocatore esiste già.");return}
- players.push(name);players.sort((a,b)=>a.localeCompare(b));save();input.value="";renderPlayers();renderSetup();
+function abandonGame(){
+ if(!current)return;
+ const ok=window.confirm("Vuoi davvero annullare la partita?\\n\\nLa partita in corso e le mani non verranno salvate nello storico.");
+ if(!ok)return;
+ current=null;
+ document.getElementById("gameCard").classList.add("hidden");
+ document.getElementById("setupCard").classList.remove("hidden");
+ renderSetup();
 }
 function playerStats(p){
  const s={games:0,wins:0,losses:0,points:0,form:[],partners:{},opponents:{}};
@@ -254,6 +276,117 @@ function renderStats(){
  document.getElementById("generalStats").innerHTML='<div class="detailgrid"><div class="stat"><strong>'+games+'</strong><span>PARTITE CONCLUSE</span></div><div class="stat"><strong>'+players.length+'</strong><span>GIOCATORI</span></div></div><div class="section-title">🏆 Classifica</div>'+top.map((x,i)=>'<div class="row" style="padding:8px 0;border-bottom:1px solid #edf0f3"><strong>'+(i+1)+'. '+esc(x[0])+'</strong><span>'+((x[1].w/x[1].g*100)||0).toFixed(1)+'%</span></div>').join("");
 }
 renderSetup();renderPlayers();renderHistory();renderStats();
+
+/* ===== v0.10 additive statistics module =====
+   This module is intentionally isolated from the game engine.
+   Its records map directly to a future Supabase schema:
+   players, games, game_players, hands, hand_scores.
+*/
+const DB_SCHEMA_V10={
+ players:{id:"player_id",name:"name"},
+ games:{id:"game_id",created_at:"created_at",mode:"mode",winner_side:"winner_side"},
+ game_players:{game_id:"game_id",player_id:"player_id",side:"side",slot:"slot"},
+ hands:{id:"hand_id",game_id:"game_id",number:"number",starter_player_id:"starter_player_id"},
+ hand_scores:{hand_id:"hand_id",side:"side",points:"points",closing:"closing"}
+};
+
+function v10PlayerStats(name){
+ const s={
+   games:0,wins:0,losses:0,points:0,
+   handsStarted:0,handsStartedWins:0,
+   form:[],partners:{},opponents:{}
+ };
+ (matches||[]).forEach(g=>{
+   const teams=g.players||[];
+   const side=teams.findIndex(t=>(t||[]).includes(name));
+   if(side<0)return;
+   s.games++;
+   s.points+=Number((g.scores||[])[side]||0);
+   if(g.winner===side){s.wins++;s.form.push("W")}
+   else{s.losses++;s.form.push("L")}
+
+   (g.hands||[]).forEach(h=>{
+     if(h.starter===name){
+       s.handsStarted++;
+       if(g.winner===side)s.handsStartedWins++;
+     }
+   });
+
+   (teams[side]||[]).forEach(p=>{
+     if(p===name)return;
+     s.partners[p]??={games:0,wins:0};
+     s.partners[p].games++;
+     if(g.winner===side)s.partners[p].wins++;
+   });
+
+   teams.forEach((team,i)=>{
+     if(i===side)return;
+     (team||[]).forEach(p=>{
+       s.opponents[p]??={games:0,wins:0};
+       s.opponents[p].games++;
+       if(g.winner===side)s.opponents[p].wins++;
+     });
+   });
+ });
+ return s;
+}
+
+function v10ShowPlayer(name){
+ const s=v10PlayerStats(name);
+ const winRate=s.games?((s.wins/s.games)*100).toFixed(1):"0.0";
+ const avg=s.games?Math.round(s.points/s.games):0;
+ const withHand=s.handsStarted?((s.handsStartedWins/s.handsStarted)*100).toFixed(1):"—";
+ const withoutHand=(s.games>0&&s.handsStarted<s.games)
+   ?(((s.wins-s.handsStartedWins)/(s.games-s.handsStarted))*100).toFixed(1):"—";
+
+ let bestPartner=null,bestOpponent=null;
+ Object.entries(s.partners).forEach(([p,x])=>{
+   const r=x.wins/x.games;
+   if(!bestPartner||r>bestPartner.rate)bestPartner={p,rate:r,...x};
+ });
+ Object.entries(s.opponents).forEach(([p,x])=>{
+   const r=x.wins/x.games;
+   if(!bestOpponent||r<bestOpponent.rate)bestOpponent={p,rate:r,...x};
+ });
+
+ let streak=0,bestStreak=0;
+ s.form.forEach(r=>{
+   if(r==="W"){streak++;bestStreak=Math.max(bestStreak,streak)}
+   else streak=0;
+ });
+
+ const host=document.getElementById("playerDetail");
+ if(!host)return;
+ host.innerHTML=
+ '<div class="row"><h2>'+esc(name)+'</h2><button class="btn secondary" onclick="document.getElementById(\\'playerDetail\\').classList.add(\\'hidden\\')">Chiudi</button></div>'+
+ '<div class="detailgrid">'+
+ '<div class="stat"><strong>'+winRate+'%</strong><span>WIN RATE</span></div>'+
+ '<div class="stat"><strong>'+s.games+'</strong><span>PARTITE</span></div>'+
+ '<div class="stat"><strong>'+s.wins+'</strong><span>VITTORIE</span></div>'+
+ '<div class="stat"><strong>'+avg+'</strong><span>PUNTI MEDI</span></div></div>'+
+ '<div class="section-title">🃏 La mano</div>'+
+ '<div class="detailgrid">'+
+ '<div class="stat"><strong>'+s.handsStarted+'</strong><span>MANI INIZIATE</span></div>'+
+ '<div class="stat"><strong>'+withHand+(withHand==="—"?"":"%")+'</strong><span>WIN RATE CON LA MANO</span></div>'+
+ '<div class="stat"><strong>'+withoutHand+(withoutHand==="—"?"":"%")+'</strong><span>WIN RATE SENZA LA MANO</span></div></div>'+
+ '<div class="section-title">🔥 Forma</div>'+
+ '<div class="card" style="margin:0"><strong>'+((s.form.slice(-10).join(" "))||"—")+'</strong><div class="muted" style="margin-top:5px">Miglior serie: '+bestStreak+' vittorie</div></div>'+
+ '<div class="section-title">🤝 Miglior compagno</div>'+
+ '<div class="card" style="margin:0">'+(bestPartner?'<strong>'+esc(bestPartner.p)+'</strong> · '+bestPartner.wins+'/'+bestPartner.games+' vittorie':'Nessun dato')+'</div>'+
+ '<div class="section-title">⚔️ Avversario più difficile</div>'+
+ '<div class="card" style="margin:0">'+(bestOpponent?'<strong>'+esc(bestOpponent.p)+'</strong> · '+bestOpponent.wins+'/'+bestOpponent.games+' vittorie':'Nessun dato')+'</div>';
+
+ host.classList.remove("hidden");
+ host.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+(function(){
+ const originalShowPlayer=window.showPlayer;
+ window.showPlayer=function(name){
+   if(typeof v10ShowPlayer==="function")return v10ShowPlayer(name);
+   if(typeof originalShowPlayer==="function")return originalShowPlayer(name);
+ };
+})();
 </script>
 </body>
 </html>
