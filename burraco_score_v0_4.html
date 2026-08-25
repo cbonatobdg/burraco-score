@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Burraco Score</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f5f8;color:#18202a;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:#111827;color:white;padding:16px;position:sticky;top:0;z-index:10}
+.top{max-width:900px;margin:auto;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:22px;margin:0}.sub{font-size:12px;color:#b8c1ce}
+main{max-width:900px;margin:16px auto;padding:0 12px}
+.card{background:#fff;border:1px solid #e0e4e9;border-radius:16px;padding:16px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+input[type=text],input[type=number]{width:100%;padding:11px;border:1px solid #d9dee5;border-radius:10px;font-size:16px}
+label.small{font-size:12px;color:#687384;display:block;margin-bottom:5px}
+.score{font-size:40px;font-weight:800}.muted{color:#687384;font-size:13px}
+.teamhead{display:flex;justify-content:space-between;gap:10px}
+.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer}
+.primary{background:#2457d6;color:#fff}.secondary{background:#e9edf2;color:#202938}
+.primary:disabled{opacity:.4;cursor:not-allowed}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.section{margin-top:16px}.section h3{font-size:14px;margin:0 0 8px}
+.row{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #edf0f3;padding:8px 0}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:38px;height:38px;border:1px solid #d7dce3;background:#fff;border-radius:9px;font-size:22px;cursor:pointer}
+.count{width:30px;text-align:center;font-weight:800;font-size:17px}
+.check{display:flex;align-items:center;gap:9px;padding:9px 0;font-size:15px}
+.check input{width:19px;height:19px}
+.total{border-top:2px solid #edf0f3;margin-top:14px;padding-top:12px;font-size:22px;font-weight:800}
+.modal{position:fixed;inset:0;background:#0008;display:none;align-items:flex-end;z-index:20}
+.modal.open{display:flex}
+.sheet{background:#fff;width:100%;max-width:900px;margin:auto;border-radius:18px 18px 0 0;padding:16px;max-height:95vh;overflow:auto}
+.warning{background:#fff3cd;color:#755b00;border-radius:10px;padding:10px;font-size:13px;margin-top:10px}
+.history{padding:12px 0;border-bottom:1px solid #e5e8ed}
+.history:last-child{border-bottom:0}
+.mini{background:#f7f8fa;border-radius:10px;padding:10px}
+@media(max-width:650px){.grid{grid-template-columns:1fr}.score{font-size:34px}.sheet{max-height:96vh}}
+
+/* v0.4 mobile scoreboard */
+.scoreboard{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.scorebox{border-radius:18px;padding:18px;color:#fff;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 5px 18px #0002}
+.scorebox.a{background:#2457d6}.scorebox.b{background:#b8324f}
+.scorebox .team{font-weight:800;font-size:16px}.scorebox .big{font-size:46px;line-height:1;font-weight:900;letter-spacing:-1px}.scorebox .remain{font-size:12px;opacity:.85}
+.main-action{width:100%;font-size:19px;padding:17px;border-radius:15px;margin-bottom:12px;box-shadow:0 4px 12px #0002}
+.target-note{text-align:center;margin:5px 0 16px;font-size:13px;color:#687384}
+.end-overlay{position:fixed;inset:0;background:#111827ee;z-index:100;display:none;align-items:center;justify-content:center;padding:18px}
+.end-overlay.open{display:flex}
+.end-card{background:#fff;border-radius:24px;width:min(520px,100%);padding:28px 20px;text-align:center;box-shadow:0 15px 50px #0006}
+.trophy{font-size:58px}.end-title{font-size:28px;font-weight:900;margin:5px 0 16px}.winner-name{font-size:24px;font-weight:900}.winner-score{font-size:52px;font-weight:900;margin:4px 0 12px}.final-row{display:flex;justify-content:space-between;background:#f5f7fa;border-radius:12px;padding:12px;margin:7px 0;font-weight:700}
+@media(max-width:650px){
+ .scoreboard{grid-template-columns:1fr 1fr}
+ .scorebox{min-height:135px;padding:14px}.scorebox .big{font-size:34px}.scorebox .team{font-size:14px}
+ main{margin-top:12px}.desktop-setup{padding:13px}
+}
+</style>
+</head>
+<body>
+
+<header>
+<div class="top">
+<div><h1>🃏 Burraco Score</h1><div class="sub">Segnapunti per partite di Burraco</div></div>
+<button class="btn secondary" onclick="newGame()">Nuova partita</button>
+</div>
+</header>
+
+<main>
+<div class="card">
+<div class="grid">
+<div><label class="small">Coppia 1</label><input id="name0" value="Coppia 1" oninput="updateNames()"></div>
+<div><label class="small">Coppia 2</label><input id="name1" value="Coppia 2" oninput="updateNames()"></div>
+</div>
+<div class="grid" style="margin-top:12px">
+<div><label class="small">Punteggio per vincere</label><input id="target" type="number" value="2005" min="1" step="1" onchange="updateTarget()"></div>
+<div><label class="small">Mani giocate</label><div id="handsNumber" style="font-size:30px;font-weight:800">0</div></div>
+</div>
+</div>
+
+<div class="scoreboard">
+<div class="scorebox a" id="score0"></div>
+<div class="scorebox b" id="score1"></div>
+</div>
+<div class="target-note" id="targetNote"></div>
+<button class="btn primary main-action" onclick="openHand()">＋ NUOVA MANO</button>
+<div class="actions" style="margin-bottom:14px">
+<button class="btn secondary" onclick="undo()">↶ Annulla ultima</button>
+</div>
+
+<div class="card">
+<strong>Storico</strong>
+<div class="muted">Il punteggio viene salvato automaticamente nel browser.</div>
+<div id="history" style="margin-top:8px"></div>
+</div>
+</main>
+
+<div id="modal" class="modal">
+<div class="sheet">
+<div class="teamhead">
+<div><h2 style="margin:0">Inserisci mano</h2><div class="muted">I punti vengono calcolati automaticamente.</div></div>
+<button class="btn secondary" onclick="closeHand()">Chiudi</button>
+</div>
+
+<div class="grid" style="margin-top:14px">
+<div class="card" id="form0"></div>
+<div class="card" id="form1"></div>
+</div>
+
+<div class="actions">
+<button id="save" class="btn primary" onclick="saveHand()" disabled>Salva mano</button>
+</div>
+<div id="warning" class="warning">⚠️ Seleziona la coppia che ha chiuso la mano.</div>
+</div>
+</div>
+
+
+<div id="endOverlay" class="end-overlay">
+ <div class="end-card">
+  <div class="trophy">🏆</div>
+  <div class="end-title">PARTITA FINITA</div>
+  <div class="winner-name" id="winnerName"></div>
+  <div class="winner-score" id="winnerScore"></div>
+  <div id="finalScores"></div>
+  <button class="btn primary main-action" style="margin-top:16px" onclick="startNewFromEnd()">NUOVA PARTITA</button>
+ </div>
+</div>
+<script>
+const STORAGE="burraco_score_clean_v1";
+const CARD_TYPES=[
+ ["Jolly",30],["Pinelle",20],["Assi",15],["8–K",10],["3–7",5]
+];
+const BURRACO_TYPES=[
+ ["Pulito",200],["Semipulito",150],["Sporco",100]
+];
+
+let game={
+ names:["Coppia 1","Coppia 2"],
+ target:2005,
+ scores:[0,0],
+ hands:[]
+};
+
+let hand=[
+ {cards:[0,0,0,0,0],residue:[0,0,0,0,0],burraco:[0,0,0],closed:false,well:false},
+ {cards:[0,0,0,0,0],residue:[0,0,0,0,0],burraco:[0,0,0],closed:false,well:false}
+];
+
+function load(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(STORAGE));
+  if(saved) game=saved;
+ }catch(e){}
+ document.getElementById("name0").value=game.names[0];
+ document.getElementById("name1").value=game.names[1];
+ document.getElementById("target").value=game.target;
+ render();
+}
+
+function saveState(){localStorage.setItem(STORAGE,JSON.stringify(game));}
+
+function updateNames(){
+ game.names=[
+  document.getElementById("name0").value||"Coppia 1",
+  document.getElementById("name1").value||"Coppia 2"
+ ];
+ saveState();render();
+}
+
+function updateTarget(){
+ game.target=Number(document.getElementById("target").value)||2005;
+ saveState();render();
+}
+
+function render(){
+ for(let i=0;i<2;i++){
+  const won=game.scores[i]>=game.target;
+  const remaining=Math.max(0,game.target-game.scores[i]);
+  document.getElementById("score"+i).innerHTML=
+   `<div class="team">${esc(game.names[i])}</div>
+    <div class="big">${fmt(game.scores[i])}</div>
+    <div class="remain">${won?"🏆 Obiettivo raggiunto":fmt(remaining)+" punti al traguardo"}</div>`;
+ }
+ document.getElementById("targetNote").textContent=
+   `Obiettivo: ${fmt(game.target)} punti · ${game.hands.length} ${game.hands.length===1?"mano":"mani"} giocate`;
+ document.getElementById("handsNumber").textContent=game.hands.length;
+ const h=document.getElementById("history");
+ if(!game.hands.length){h.innerHTML='<div class="muted" style="margin-top:10px">Nessuna mano ancora.</div>';return}
+ h.innerHTML=game.hands.map((x,n)=>{
+  const number=n+1;
+  return `<div class="history">
+   <strong>Mano ${number}</strong>
+   <div class="grid" style="margin-top:8px">
+    <div class="mini"><strong>${esc(game.names[0])}</strong><br>${fmt(x.total[0])} punti<br><span class="muted">${esc(x.detail[0])}</span></div>
+    <div class="mini"><strong>${esc(game.names[1])}</strong><br>${fmt(x.total[1])} punti<br><span class="muted">${esc(x.detail[1])}</span></div>
+   </div>
+  </div>`;
+ }).reverse().join("");
+}
+
+function openHand(){
+ hand=[
+  {cards:[0,0,0,0,0],residue:[0,0,0,0,0],burraco:[0,0,0],closed:false,well:false},
+  {cards:[0,0,0,0,0],residue:[0,0,0,0,0],burraco:[0,0,0],closed:false,well:false}
+ ];
+ for(let i=0;i<2;i++)document.getElementById("form"+i).innerHTML=form(i);
+ document.getElementById("modal").classList.add("open");
+ updateModal();
+}
+
+function closeHand(){document.getElementById("modal").classList.remove("open");}
+
+function form(i){
+ let s=`<div class="teamhead"><div><div class="muted">Coppia ${i+1}</div><strong>${esc(game.names[i])}</strong></div><strong id="live${i}">0</strong></div>`;
+
+ s+=`<div class="section"><h3>Carte calate</h3>`;
+ CARD_TYPES.forEach((c,k)=>{
+  s+=row(c[0]+" <span class='muted'>("+c[1]+")</span>",`card${i}_${k}`,"changeCard",i,k);
+ });
+ s+=`</div>`;
+
+ s+=`<div class="section"><h3>Burrachi</h3>`;
+ BURRACO_TYPES.forEach((b,k)=>{
+  s+=row(b[0]+" <span class='muted'>(+"+b[1]+" ciascuno)</span>",`burraco${i}_${k}`,"changeBurraco",i,k);
+ });
+ s+=`</div>`;
+
+ s+=`<div class="section"><h3>Bonus / penalità</h3>
+ <label class="check"><input type="checkbox" id="closed${i}" onchange="setClosed(${i})"> Chiusura <strong>+100</strong></label>
+ <label class="check"><input type="checkbox" id="well${i}" onchange="toggleWell(${i})"> Pozzetto non preso <strong>−100</strong></label>
+ </div>`;
+
+ s+=`<div class="section"><h3>Carte residue</h3>`;
+ CARD_TYPES.forEach((c,k)=>{
+  s+=row(c[0],`residue${i}_${k}`,"changeResidue",i,k);
+ });
+ s+=`</div>`;
+
+ s+=`<div class="total">Totale mano: <span id="total${i}">0</span></div>`;
+ return s;
+}
+
+function row(label,id,fn,i,k){
+ return `<div class="row"><span>${label}</span>
+ <div class="stepper">
+  <button type="button" onclick="${fn}(${i},${k},-1)">−</button>
+  <span id="${id}" class="count">0</span>
+  <button type="button" onclick="${fn}(${i},${k},1)">＋</button>
+ </div></div>`;
+}
+
+function changeCard(i,k,d){
+ hand[i].cards[k]=Math.max(0,hand[i].cards[k]+d);
+ document.getElementById(`card${i}_${k}`).textContent=hand[i].cards[k];
+ updateModal();
+}
+
+function changeResidue(i,k,d){
+ hand[i].residue[k]=Math.max(0,hand[i].residue[k]+d);
+ document.getElementById(`residue${i}_${k}`).textContent=hand[i].residue[k];
+ updateModal();
+}
+
+function changeBurraco(i,k,d){
+ hand[i].burraco[k]=Math.max(0,hand[i].burraco[k]+d);
+ document.getElementById(`burraco${i}_${k}`).textContent=hand[i].burraco[k];
+ updateModal();
+}
+
+function setClosed(i){
+ hand[i].closed=document.getElementById(`closed${i}`).checked;
+ const other=1-i;
+ if(hand[i].closed){
+  hand[other].closed=false;
+  document.getElementById(`closed${other}`).checked=false;
+ }
+ updateModal();
+}
+
+function toggleWell(i){
+ hand[i].well=document.getElementById(`well${i}`).checked;
+ updateModal();
+}
+
+function calculate(i){
+ let total=0;
+ hand[i].cards.forEach((n,k)=>total+=n*CARD_TYPES[k][1]);
+ hand[i].burraco.forEach((n,k)=>total+=n*BURRACO_TYPES[k][1]);
+ if(hand[i].closed)total+=100;
+ if(hand[i].well)total-=100;
+ hand[i].residue.forEach((n,k)=>total-=n*CARD_TYPES[k][1]);
+ return total;
+}
+
+function detail(i){
+ const a=[];
+ const cal=hand[i].cards.map((n,k)=>n?`${n} ${CARD_TYPES[k][0]}`:null).filter(Boolean);
+ const bur=hand[i].burraco.map((n,k)=>n?`${n} ${BURRACO_TYPES[k][0].toLowerCase()}`:null).filter(Boolean);
+ const res=hand[i].residue.map((n,k)=>n?`${n} ${CARD_TYPES[k][0]}`:null).filter(Boolean);
+ if(cal.length)a.push("Calate: "+cal.join(", "));
+ if(bur.length)a.push("Burrachi: "+bur.join(", "));
+ if(hand[i].closed)a.push("Chiusura");
+ if(hand[i].well)a.push("Pozzetto non preso");
+ if(res.length)a.push("Residue: "+res.join(", "));
+ return a.join(" · ")||"Nessun punto";
+}
+
+function updateModal(){
+ for(let i=0;i<2;i++){
+  const n=calculate(i);
+  document.getElementById("live"+i).textContent=fmt(n);
+  document.getElementById("total"+i).textContent=fmt(n);
+ }
+ const valid=hand[0].closed||hand[1].closed;
+ document.getElementById("save").disabled=!valid;
+ document.getElementById("warning").style.display=valid?"none":"block";
+}
+
+function saveHand(){
+ if(!(hand[0].closed||hand[1].closed)){
+  updateModal();
+  return;
+ }
+ const totals=[calculate(0),calculate(1)];
+ game.scores[0]+=totals[0];
+ game.scores[1]+=totals[1];
+ game.hands.push({
+  total:totals,
+  detail:[detail(0),detail(1)]
+ });
+ saveState();
+ closeHand();
+ render();
+ checkGameEnd();
+}
+
+function checkGameEnd(){
+ const a=game.scores[0], b=game.scores[1];
+ if(a<game.target && b<game.target)return;
+ let winner;
+ if(a>b)winner=0;
+ else if(b>a)winner=1;
+ else winner=-1;
+ const name=document.getElementById("winnerName");
+ const score=document.getElementById("winnerScore");
+ const finals=document.getElementById("finalScores");
+ if(winner===-1){
+  name.textContent="Pareggio";
+  score.textContent=fmt(a)+" punti";
+ }else{
+  name.textContent=game.names[winner];
+  score.textContent=fmt(game.scores[winner])+" punti";
+ }
+ finals.innerHTML=
+  `<div class="final-row"><span>${esc(game.names[0])}</span><span>${fmt(a)}</span></div>
+   <div class="final-row"><span>${esc(game.names[1])}</span><span>${fmt(b)}</span></div>
+   <div class="muted" style="margin-top:10px">${game.hands.length} ${game.hands.length===1?"mano":"mani"} giocate</div>`;
+ document.getElementById("endOverlay").classList.add("open");
+}
+function startNewFromEnd(){
+ document.getElementById("endOverlay").classList.remove("open");
+ newGame();
+}
+function undo(){
+ if(!game.hands.length)return;
+ const x=game.hands.pop();
+ game.scores[0]-=x.total[0];
+ game.scores[1]-=x.total[1];
+ saveState();render();
+ const overlay=document.getElementById("endOverlay"); if(overlay)overlay.classList.remove("open");
+}
+
+function newGame(){
+ if(!confirm("Iniziare una nuova partita? Lo storico verrà cancellato."))return;
+ game.scores=[0,0];
+ game.hands=[];
+ saveState();render();
+ document.getElementById("endOverlay").classList.remove("open");
+}
+
+function fmt(n){return Number(n).toLocaleString("it-IT")}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
+
+load();
+</script>
+</body>
+</html>
