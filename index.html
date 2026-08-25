@@ -522,5 +522,68 @@ window.burracoCloudSaveGame=async function(game){
   }
 };
 </script>
+
+<script type="module">
+const supabaseForPlayers = window.burracoSupabase;
+
+window.addPlayer = async function(){
+  const input = document.getElementById("newPlayer");
+  const name = (input?.value || "").trim();
+
+  if(!name){
+    alert("Inserisci il nome del giocatore.");
+    return;
+  }
+
+  if(players.some(p => p.toLowerCase() === name.toLowerCase())){
+    alert("Questo giocatore esiste già.");
+    return;
+  }
+
+  const btn = input?.nextElementSibling;
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = "Salvataggio...";
+  }
+
+  try{
+    if(!supabaseForPlayers){
+      throw new Error("Connessione Supabase non disponibile.");
+    }
+
+    const {data:{user},error:userError}=await supabaseForPlayers.auth.getUser();
+    if(userError || !user) throw userError || new Error("Devi effettuare il login.");
+
+    const {data:members,error:memberError}=await supabaseForPlayers
+      .from("group_members")
+      .select("group_id")
+      .eq("user_id",user.id)
+      .limit(1);
+
+    if(memberError) throw memberError;
+    if(!members?.length) throw new Error("Nessun gruppo associato al tuo account.");
+
+    const {data:created,error:createError}=await supabaseForPlayers.rpc(
+      "create_group_player",
+      {p_group_id:members[0].group_id,p_name:name}
+    );
+
+    if(createError) throw createError;
+
+    players.push(name);
+    save();
+    input.value="";
+    renderPlayers();
+    renderSetup();
+  }catch(err){
+    alert("Impossibile creare il giocatore.\n\n"+(err?.message || String(err)));
+  }finally{
+    if(btn){
+      btn.disabled=false;
+      btn.textContent="Aggiungi";
+    }
+  }
+};
+</script>
 </body>
 </html>
