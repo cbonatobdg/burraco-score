@@ -57,7 +57,11 @@ label.small{font-size:12px;color:#687384;display:block;margin-bottom:5px}
 
 <style>
 .navbar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}.navbtn{border:1px solid #dfe3e8;background:#fff;border-radius:11px;padding:11px;font-weight:800;cursor:pointer}.navbtn.active{background:#111827;color:#fff}.page{display:none}.page.active{display:block}.player-list{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.player-card{background:#f7f8fa;border-radius:12px;padding:13px}.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.stat{background:#f7f8fa;border-radius:12px;padding:12px;text-align:center}.stat .v{font-size:25px;font-weight:900}.stat .l{font-size:11px;color:#687384}.select{width:100%;padding:11px;border:1px solid #d9dee5;border-radius:10px;font-size:16px;background:#fff}.mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mode-toggle button{padding:11px;border:1px solid #d9dee5;background:#fff;border-radius:10px;font-weight:800}.mode-toggle button.active{background:#2457d6;color:#fff}@media(max-width:650px){.player-list{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,1fr)}}
-</style>
+<style>
+#gameSetup .mode-toggle button.active{background:#2457d6;color:#fff}
+.stat-table{width:100%;border-collapse:collapse}.stat-table th,.stat-table td{padding:9px 6px;border-bottom:1px solid #edf0f3;text-align:left}.stat-table th{font-size:12px;color:#687384}.stat-table th:not(:first-child),.stat-table td:not(:first-child){text-align:right}
+.stats-card{background:#fff;border:1px solid #e0e4e9;border-radius:16px;padding:16px;margin-bottom:14px}
+</style></style>
 </style>
 </head>
 <body>
@@ -75,7 +79,16 @@ label.small{font-size:12px;color:#687384;display:block;margin-bottom:5px}
 <button class="navbtn" id="navPlayers" onclick="showPage('players')">👥 Giocatori</button>
 <button class="navbtn" id="navStats" onclick="showPage('stats')">📊 Statistiche</button>
 </div>
-<section id="pageGame" class="page active"><div class="card">
+<section id="pageGame" class="page active">
+<div class="card" id="gameSetup">
+<h2 style="margin:0 0 6px">Nuova partita</h2><div class="muted">Scegli come vuoi giocare.</div>
+<div class="mode-toggle" style="margin-top:12px">
+<button id="startSingle" onclick="chooseStartMode('single')">👤 Singolo</button>
+<button id="startPairs" onclick="chooseStartMode('pairs')">👥 Coppie</button>
+</div>
+<div id="startModeFields" style="margin-top:14px"></div>
+<button class="btn primary" style="width:100%;margin-top:12px" onclick="startGameFromMain()">Inizia partita</button>
+</div><div class="card">
 <div class="grid">
 <div><label class="small">Coppia 1</label><input id="name0" value="Coppia 1" oninput="updateNames()"></div>
 <div><label class="small">Coppia 2</label><input id="name1" value="Coppia 2" oninput="updateNames()"></div>
@@ -190,229 +203,12 @@ function chooseMode(m){selectedMode=m;document.getElementById("modeSingle").clas
 function ps(id,used=[]){return `<select id="${id}" class="select"><option value="">Seleziona...</option>${players.filter(p=>!used.includes(p)).map(p=>`<option>${esc(p)}</option>`).join("")}</select>`}
 function renderNewGameFields(){let e=document.getElementById("newGameFields");if(selectedMode==="single"){e.innerHTML=`<h3>Giocatori</h3><div class="grid"><div><label class="small">Giocatore 1</label>${ps("ng0")}</div><div><label class="small">Giocatore 2</label>${ps("ng1")}</div></div>`}else{e.innerHTML=`<h3>Coppie</h3><div class="grid"><div><label class="small">Coppia 1 · Giocatore 1</label>${ps("ng0")}</div><div><label class="small">Coppia 1 · Giocatore 2</label>${ps("ng1")}</div><div><label class="small">Coppia 2 · Giocatore 1</label>${ps("ng2")}</div><div><label class="small">Coppia 2 · Giocatore 2</label>${ps("ng3")}</div></div>`}}
 function startConfiguredGame(){let ids=selectedMode==="single"?["ng0","ng1"]:["ng0","ng1","ng2","ng3"];let v=ids.map(id=>document.getElementById(id)?.value||"");if(v.some(x=>!x)||new Set(v).size!==v.length){alert("Seleziona giocatori diversi.");return}game.mode=selectedMode;game.players=selectedMode==="single"?[[v[0]],[v[1]]]:[[v[0],v[1]],[v[2],v[3]]];game.names=selectedMode==="single"?v:[v[0]+" & "+v[1],v[2]+" & "+v[3]];game.scores=[0,0];game.hands=[];game.startedAt=new Date().toISOString();game.completedAt=null;game.winner=null;saveState();closeNewGame();showPage("game");render()}
+
 function getArchive(){try{return JSON.parse(localStorage.getItem("burraco_score_matches_v1"))||[]}catch(e){return[]}}
 function archiveGame(){let a=getArchive();a.push(JSON.parse(JSON.stringify(game)));localStorage.setItem("burraco_score_matches_v1",JSON.stringify(a))}
 function setStatsFilter(f){statsFilter=f;renderStats()}
-function playerStats(matches){let m={};matches.forEach(g=>{(g.players||[]).forEach((side,si)=>side.forEach(p=>{if(!m[p])m[p]={g:0,w:0,pts:0};m[p].g++;if(g.winner===si)m[p].w++;m[p].pts+=g.scores[si]}))});return Object.entries(m).map(([p,x])=>({p,...x,rate:x.g?x.w/x.g*100:0,avg:x.g?x.pts/x.g:0})).sort((a,b)=>b.rate-a.rate)}
-function renderStats(view){let el=document.getElementById("statsMain"),all=getArchive();let matches=view==="h2h"?all:all.filter(g=>statsFilter==="all"||g.mode===statsFilter);if(view==="h2h"){el.innerHTML=`<div class="card"><h3>⚔️ Testa a testa</h3><div class="grid"><div>${ps("h2ha")}</div><div>${ps("h2hb")}</div></div><button class="btn primary" style="margin-top:10px" onclick="h2h()">Confronta</button><div id="h2hr" style="margin-top:12px"></div></div>`;return}if(!matches.length){el.innerHTML='<div class="card muted">Nessuna partita conclusa con questo filtro.</div>';return}let rows=playerStats(matches);el.innerHTML=`<div class="card"><h3>Classifica giocatori</h3>${rows.map(x=>`<div class="player-card" style="margin:8px 0"><strong>${esc(x.p)}</strong><div class="stat-grid" style="margin-top:8px"><div class="stat"><div class="v">${x.g}</div><div class="l">Partite</div></div><div class="stat"><div class="v">${x.w}</div><div class="l">Vittorie</div></div><div class="stat"><div class="v">${x.rate.toFixed(1)}%</div><div class="l">Win rate</div></div><div class="stat"><div class="v">${Math.round(x.avg)}</div><div class="l">Punti medi</div></div></div></div>`).join("")}</div>`}
-function h2h(){let a=document.getElementById("h2ha").value,b=document.getElementById("h2hb").value;if(!a||!b||a===b)return;let games=0,aw=0,bw=0,partners=0;getArchive().forEach(g=>{let p0=g.players?.[0]||[],p1=g.players?.[1]||[];let sa=p0.includes(a)?0:p1.includes(a)?1:-1,sb=p0.includes(b)?0:p1.includes(b)?1:-1;if(sa<0||sb<0)return;games++;if(g.winner===sa)aw++;if(g.winner===sb)bw++;if(sa===sb)partners++});document.getElementById("h2hr").innerHTML=`<div class="matchup"><div class="vsbox"><strong>${esc(a)}</strong><div class="winner-score" style="font-size:34px">${aw}</div><div class="muted">vittorie</div></div><div class="vsbox"><strong>${esc(b)}</strong><div class="winner-score" style="font-size:34px">${bw}</div><div class="muted">vittorie</div></div></div><div class="muted" style="margin-top:10px">Partite condivise: ${games} · Compagni di squadra: ${partners}</div>`}
-
-function load(){
- loadExtra();
- try{
-  const saved=JSON.parse(localStorage.getItem(STORAGE));
-  if(saved) game=saved;
- }catch(e){}
- document.getElementById("name0").value=game.names[0];
- document.getElementById("name1").value=game.names[1];
- document.getElementById("target").value=game.target;
- render();
-}
-
-function saveState(){localStorage.setItem(STORAGE,JSON.stringify(game));}
-
-function updateNames(){
- game.names=[
-  document.getElementById("name0").value||"Coppia 1",
-  document.getElementById("name1").value||"Coppia 2"
- ];
- saveState();render();
-}
-
-function updateTarget(){
- game.target=Number(document.getElementById("target").value)||2005;
- saveState();render();
-}
-
-function render(){
- for(let i=0;i<2;i++){
-  const won=game.scores[i]>=game.target;
-  const remaining=Math.max(0,game.target-game.scores[i]);
-  document.getElementById("score"+i).innerHTML=
-   `<div class="team">${esc(game.names[i])}</div>
-    <div class="big">${fmt(game.scores[i])}</div>
-    <div class="remain">${won?"🏆 Obiettivo raggiunto":fmt(remaining)+" punti al traguardo"}</div>`;
- }
- document.getElementById("targetNote").textContent=
-   `Obiettivo: ${fmt(game.target)} punti · ${game.hands.length} ${game.hands.length===1?"mano":"mani"} giocate`;
- document.getElementById("handsNumber").textContent=game.hands.length;
- const h=document.getElementById("history");
- if(!game.hands.length){h.innerHTML='<div class="muted" style="margin-top:10px">Nessuna mano ancora.</div>';return}
- h.innerHTML=game.hands.map((x,n)=>{
-  const number=n+1;
-  return `<div class="history">
-   <strong>Mano ${number}</strong>
-   <div class="grid" style="margin-top:8px">
-    <div class="mini"><strong>${esc(game.names[0])}</strong><br>${fmt(x.total[0])} punti<br><span class="muted">${esc(x.detail[0])}</span></div>
-    <div class="mini"><strong>${esc(game.names[1])}</strong><br>${fmt(x.total[1])} punti<br><span class="muted">${esc(x.detail[1])}</span></div>
-   </div>
-  </div>`;
- }).reverse().join("");
-}
-
-function openHand(){
- hand=[
-  {cards:[0,0,0,0,0],residue:[0,0,0,0,0],burraco:[0,0,0],closed:false,well:false},
-  {cards:[0,0,0,0,0],residue:[0,0,0,0,0],burraco:[0,0,0],closed:false,well:false}
- ];
- for(let i=0;i<2;i++)document.getElementById("form"+i).innerHTML=form(i);
- document.getElementById("modal").classList.add("open");
- updateModal();
-}
-
-function closeHand(){document.getElementById("modal").classList.remove("open");}
-
-function form(i){
- let s=`<div class="teamhead"><div><div class="muted">Coppia ${i+1}</div><strong>${esc(game.names[i])}</strong></div><strong id="live${i}">0</strong></div>`;
-
- s+=`<div class="section"><h3>Carte calate</h3>`;
- CARD_TYPES.forEach((c,k)=>{
-  s+=row(c[0]+" <span class='muted'>("+c[1]+")</span>",`card${i}_${k}`,"changeCard",i,k);
- });
- s+=`</div>`;
-
- s+=`<div class="section"><h3>Burrachi</h3>`;
- BURRACO_TYPES.forEach((b,k)=>{
-  s+=row(b[0]+" <span class='muted'>(+"+b[1]+" ciascuno)</span>",`burraco${i}_${k}`,"changeBurraco",i,k);
- });
- s+=`</div>`;
-
- s+=`<div class="section"><h3>Bonus / penalità</h3>
- <label class="check"><input type="checkbox" id="closed${i}" onchange="setClosed(${i})"> Chiusura <strong>+100</strong></label>
- <label class="check"><input type="checkbox" id="well${i}" onchange="toggleWell(${i})"> Pozzetto non preso <strong>−100</strong></label>
- </div>`;
-
- s+=`<div class="section"><h3>Carte residue</h3>`;
- CARD_TYPES.forEach((c,k)=>{
-  s+=row(c[0],`residue${i}_${k}`,"changeResidue",i,k);
- });
- s+=`</div>`;
-
- s+=`<div class="total">Totale mano: <span id="total${i}">0</span></div>`;
- return s;
-}
-
-function row(label,id,fn,i,k){
- return `<div class="row"><span>${label}</span>
- <div class="stepper">
-  <button type="button" onclick="${fn}(${i},${k},-1)">−</button>
-  <span id="${id}" class="count">0</span>
-  <button type="button" onclick="${fn}(${i},${k},1)">＋</button>
- </div></div>`;
-}
-
-function changeCard(i,k,d){
- hand[i].cards[k]=Math.max(0,hand[i].cards[k]+d);
- document.getElementById(`card${i}_${k}`).textContent=hand[i].cards[k];
- updateModal();
-}
-
-function changeResidue(i,k,d){
- hand[i].residue[k]=Math.max(0,hand[i].residue[k]+d);
- document.getElementById(`residue${i}_${k}`).textContent=hand[i].residue[k];
- updateModal();
-}
-
-function changeBurraco(i,k,d){
- hand[i].burraco[k]=Math.max(0,hand[i].burraco[k]+d);
- document.getElementById(`burraco${i}_${k}`).textContent=hand[i].burraco[k];
- updateModal();
-}
-
-function setClosed(i){
- hand[i].closed=document.getElementById(`closed${i}`).checked;
- const other=1-i;
- if(hand[i].closed){
-  hand[other].closed=false;
-  document.getElementById(`closed${other}`).checked=false;
- }
- updateModal();
-}
-
-function toggleWell(i){
- hand[i].well=document.getElementById(`well${i}`).checked;
- updateModal();
-}
-
-function calculate(i){
- let total=0;
- hand[i].cards.forEach((n,k)=>total+=n*CARD_TYPES[k][1]);
- hand[i].burraco.forEach((n,k)=>total+=n*BURRACO_TYPES[k][1]);
- if(hand[i].closed)total+=100;
- if(hand[i].well)total-=100;
- hand[i].residue.forEach((n,k)=>total-=n*CARD_TYPES[k][1]);
- return total;
-}
-
-function detail(i){
- const a=[];
- const cal=hand[i].cards.map((n,k)=>n?`${n} ${CARD_TYPES[k][0]}`:null).filter(Boolean);
- const bur=hand[i].burraco.map((n,k)=>n?`${n} ${BURRACO_TYPES[k][0].toLowerCase()}`:null).filter(Boolean);
- const res=hand[i].residue.map((n,k)=>n?`${n} ${CARD_TYPES[k][0]}`:null).filter(Boolean);
- if(cal.length)a.push("Calate: "+cal.join(", "));
- if(bur.length)a.push("Burrachi: "+bur.join(", "));
- if(hand[i].closed)a.push("Chiusura");
- if(hand[i].well)a.push("Pozzetto non preso");
- if(res.length)a.push("Residue: "+res.join(", "));
- return a.join(" · ")||"Nessun punto";
-}
-
-function updateModal(){
- for(let i=0;i<2;i++){
-  const n=calculate(i);
-  document.getElementById("live"+i).textContent=fmt(n);
-  document.getElementById("total"+i).textContent=fmt(n);
- }
- const valid=hand[0].closed||hand[1].closed;
- document.getElementById("save").disabled=!valid;
- document.getElementById("warning").style.display=valid?"none":"block";
-}
-
-function saveHand(){
- if(!(hand[0].closed||hand[1].closed)){
-  updateModal();
-  return;
- }
- const totals=[calculate(0),calculate(1)];
- game.scores[0]+=totals[0];
- game.scores[1]+=totals[1];
- game.hands.push({
-  total:totals,
-  detail:[detail(0),detail(1)]
- });
- saveState();
- closeHand();
- render();
- checkGameEnd();
-}
-
-function checkGameEnd(){
- const a=game.scores[0], b=game.scores[1];
- if(a<game.target && b<game.target)return;
- let winner;
- if(a>b)winner=0;
- else if(b>a)winner=1;
- else winner=-1;
- const name=document.getElementById("winnerName");
- const score=document.getElementById("winnerScore");
- const finals=document.getElementById("finalScores");
- if(winner===-1){
-  name.textContent="Pareggio";
-  score.textContent=fmt(a)+" punti";
- }else{
-  name.textContent=game.names[winner];
-  score.textContent=fmt(game.scores[winner])+" punti";
- }
- finals.innerHTML=
-  `<div class="final-row"><span>${esc(game.names[0])}</span><span>${fmt(a)}</span></div>
-   <div class="final-row"><span>${esc(game.names[1])}</span><span>${fmt(b)}</span></div>
-   <div class="muted" style="margin-top:10px">${game.hands.length} ${game.hands.length===1?"mano":"mani"} giocate</div>`;
- document.getElementById("endOverlay").classList.add("open");
-}
-function startNewFromEnd(){
- document.getElementById("endOverlay").classList.remove("open");
- newGame();
-}
+function renderStats(view){const el=document.getElementById("statsMain"),all=getArchive();if(view==="h2h"){el.innerHTML='<div class="stats-card"><h3>⚔️ Testa a testa</h3><div class="grid"><div>'+ps("h2ha")+'</div><div>'+ps("h2hb")+'</div></div><button class="btn primary" style="margin-top:10px" onclick="h2h()">Confronta</button><div id="h2hr" style="margin-top:12px"></div></div>';return}const matches=all.filter(g=>statsFilter==="all"||g.mode===statsFilter);if(!matches.length){el.innerHTML='<div class="stats-card muted">Nessuna partita conclusa con questo filtro.</div>';return}const m={};matches.forEach(g=>(g.players||[]).forEach((side,si)=>(side||[]).forEach(p=>{if(!m[p])m[p]={g:0,w:0,pts:0,bur:0,cl:0};m[p].g++;if(g.winner===si)m[p].w++;m[p].pts+=Number(g.scores?.[si]||0);(g.hands||[]).forEach(h=>{const d=String(h.detail?.[si]||"");for(const x of d.matchAll(/(\d+)\s+(puliti|semipuliti|sporchi)/g))m[p].bur+=Number(x[1]);if(d.includes("Chiusura"))m[p].cl++})})));const rows=Object.entries(m).map(([p,x])=>({p,...x,rate:x.g?100*x.w/x.g:0,avg:x.g?x.pts/x.g:0})).sort((a,b)=>b.rate-a.rate);el.innerHTML='<div class="stats-card"><h3>Classifica giocatori</h3><table class="stat-table"><thead><tr><th>Giocatore</th><th>Partite</th><th>Vinte</th><th>Win rate</th><th>Punti medi</th><th>Burrachi</th><th>Chiusure</th></tr></thead><tbody>'+rows.map(x=>'<tr><td><strong>'+esc(x.p)+'</strong></td><td>'+x.g+'</td><td>'+x.w+'</td><td>'+x.rate.toFixed(1)+'%</td><td>'+Math.round(x.avg)+'</td><td>'+x.bur+'</td><td>'+x.cl+'</td></tr>').join("")+'</tbody></table></div>'}
+function h2h(){const a=document.getElementById("h2ha")?.value,b=document.getElementById("h2hb")?.value;if(!a||!b||a===b){alert("Seleziona due giocatori diversi.");return}let games=0,aw=0,bw=0,partners=0,opponents=0;getArchive().forEach(g=>{const p0=g.players?.[0]||[],p1=g.players?.[1]||[],sa=p0.includes(a)?0:p1.includes(a)?1:-1,sb=p0.includes(b)?0:p1.includes(b)?1:-1;if(sa<0||sb<0)return;games++;if(g.winner===sa)aw++;if(g.winner===sb)bw++;if(sa===sb)partners++;else opponents++});document.getElementById("h2hr").innerHTML='<div class="grid"><div class="stats-card" style="text-align:center"><strong>'+esc(a)+'</strong><div class="winner-score" style="font-size:36px">'+aw+'</div><div class="muted">vittorie</div></div><div class="stats-card" style="text-align:center"><strong>'+esc(b)+'</strong><div class="winner-score" style="font-size:36px">'+bw+'</div><div class="muted">vittorie</div></div></div><div class="stats-card">'+games+' partite condivise · '+opponents+' da avversari · '+partners+' da compagni</div>'}
 function undo(){
  if(!game.hands.length)return;
  const x=game.hands.pop();
@@ -433,7 +229,7 @@ function newGame(){
 function fmt(n){return Number(n).toLocaleString("it-IT")}
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
 
-load();renderPlayers();
+load();renderPlayers();chooseStartMode('pairs');
 </script>
 </body>
 </html>
